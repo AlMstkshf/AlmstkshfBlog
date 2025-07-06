@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
@@ -65,11 +68,7 @@ app.use((req, res, next) => {
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
     const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
+    server.listen(port, "localhost", () => {
       log(`serving on port ${port}`);
     });
 
@@ -95,11 +94,7 @@ app.use((req, res, next) => {
         }
 
         const port = 5000;
-        server.listen({
-          port,
-          host: "0.0.0.0",
-          reusePort: true,
-        }, () => {
+        server.listen(port, "localhost", () => {
           log(`serving on port ${port} (database connection failed)`);
         });
       } catch (fallbackError) {
