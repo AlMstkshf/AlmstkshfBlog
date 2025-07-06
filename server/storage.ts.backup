@@ -1,0 +1,494 @@
+import {
+  categories,
+  articles,
+  newsletterSubscribers,
+  contactSubmissions,
+  automationSettings,
+  apiKeys,
+  users,
+  type Category,
+  type Article,
+  type ArticleWithCategory,
+  type InsertCategory,
+  type InsertArticle,
+  type NewsletterSubscriber,
+  type InsertNewsletterSubscriber,
+  type ContactSubmission,
+  type InsertContactSubmission,
+  type ApiKey,
+  type InsertApiKey,
+  type UpsertUser,
+  type User,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, ilike, sql } from "drizzle-orm";
+
+export interface IStorage {
+  // User operations (for future auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Category operations
+  getCategories(): Promise<Category[]>;
+  getCategoryBySlug(slug: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+
+  // Article operations
+  getArticles(options?: {
+    categoryId?: number;
+    featured?: boolean;
+    published?: boolean;
+    limit?: number;
+    offset?: number;
+    language?: string;
+  }): Promise<ArticleWithCategory[]>;
+  getArticleBySlug(slug: string): Promise<ArticleWithCategory | undefined>;
+  getArticleById(id: number): Promise<ArticleWithCategory | undefined>;
+  createArticle(article: InsertArticle): Promise<Article>;
+  updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article>;
+  deleteArticle(id: number): Promise<void>;
+  searchArticles(query: string, language?: string): Promise<ArticleWithCategory[]>;
+
+  // Newsletter operations
+  subscribeToNewsletter(subscriber: InsertNewsletterSubscriber): Promise<NewsletterSubscriber>;
+  getNewsletterSubscribers(): Promise<NewsletterSubscriber[]>;
+
+  // Contact operations
+  submitContactForm(submission: InsertContactSubmission): Promise<ContactSubmission>;
+  getContactSubmissions(): Promise<ContactSubmission[]>;
+
+  // Automation settings operations
+  getAutomationSetting(key: string): Promise<boolean>;
+  setAutomationSetting(key: string, value: boolean): Promise<void>;
+
+  // API key operations
+  getApiKeys(): Promise<ApiKey[]>;
+  getApiKey(serviceName: string): Promise<ApiKey | undefined>;
+  createApiKey(apiKey: InsertApiKey): Promise<ApiKey>;
+  updateApiKey(id: number, apiKey: Partial<InsertApiKey>): Promise<ApiKey>;
+  deleteApiKey(id: number): Promise<void>;
+  updateApiKeyLastUsed(serviceName: string): Promise<void>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Category operations
+  async getCategories(): Promise<Category[]> {
+    return await db.select().from(categories).orderBy(categories.nameEn);
+  }
+
+  async getCategoryBySlug(slug: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.slug, slug));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  // Article operations
+  async getArticles(options: {
+    categoryId?: number;
+    featured?: boolean;
+    published?: boolean;
+    limit?: number;
+    offset?: number;
+    language?: string;
+  } = {}): Promise<ArticleWithCategory[]> {
+    const { categoryId, featured, published = true, limit = 50, offset = 0 } = options;
+
+    const conditions = [];
+
+    if (published !== undefined) {
+      conditions.push(eq(articles.published, published));
+    }
+
+    if (categoryId !== undefined) {
+      conditions.push(eq(articles.categoryId, categoryId));
+    }
+
+    if (featured !== undefined) {
+      conditions.push(eq(articles.featured, featured));
+    }
+
+    const baseQuery = db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        titleEn: articles.titleEn,
+        titleAr: articles.titleAr,
+        excerptEn: articles.excerptEn,
+        excerptAr: articles.excerptAr,
+        // Exclude full content for listing to improve performance
+        metaDescriptionEn: articles.metaDescriptionEn,
+        metaDescriptionAr: articles.metaDescriptionAr,
+        featuredImage: articles.featuredImage,
+        authorName: articles.authorName,
+        authorImage: articles.authorImage,
+        categoryId: articles.categoryId,
+        published: articles.published,
+        featured: articles.featured,
+        readingTime: articles.readingTime,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        category: {
+          id: categories.id,
+          slug: categories.slug,
+          nameEn: categories.nameEn,
+          nameAr: categories.nameAr,
+          descriptionEn: categories.descriptionEn,
+          descriptionAr: categories.descriptionAr,
+          iconName: categories.iconName,
+          createdAt: categories.createdAt,
+        },
+      })
+      .from(articles)
+      .leftJoin(categories, eq(articles.categoryId, categories.id));
+
+    const results = conditions.length > 0 
+      ? await baseQuery
+          .where(and(...conditions))
+          .orderBy(desc(articles.publishedAt), desc(articles.createdAt))
+          .limit(limit)
+          .offset(offset)
+      : await baseQuery
+          .orderBy(desc(articles.publishedAt), desc(articles.createdAt))
+          .limit(limit)
+          .offset(offset);
+
+    // Add computed language-specific fields for API compatibility
+    return results.map(article => ({
+      ...article,
+      title: article.titleEn, // Default to English, can be language-specific later
+      excerpt: article.excerptEn,
+      // Content is excluded from listing for performance
+      metaDescription: article.metaDescriptionEn,
+    })) as ArticleWithCategory[];
+  }
+
+  async getArticleBySlug(slug: string): Promise<ArticleWithCategory | undefined> {
+    try {
+      const [result] = await db
+        .select({
+          id: articles.id,
+          slug: articles.slug,
+          titleEn: articles.titleEn,
+          titleAr: articles.titleAr,
+          excerptEn: articles.excerptEn,
+          excerptAr: articles.excerptAr,
+          contentEn: articles.contentEn,
+          contentAr: articles.contentAr,
+          metaDescriptionEn: articles.metaDescriptionEn,
+          metaDescriptionAr: articles.metaDescriptionAr,
+          featuredImage: articles.featuredImage,
+          authorName: articles.authorName,
+          authorImage: articles.authorImage,
+          categoryId: articles.categoryId,
+          published: articles.published,
+          featured: articles.featured,
+          readingTime: articles.readingTime,
+          publishedAt: articles.publishedAt,
+          createdAt: articles.createdAt,
+          updatedAt: articles.updatedAt,
+          category: {
+            id: categories.id,
+            slug: categories.slug,
+            nameEn: categories.nameEn,
+            nameAr: categories.nameAr,
+            descriptionEn: categories.descriptionEn,
+            descriptionAr: categories.descriptionAr,
+            iconName: categories.iconName,
+            createdAt: categories.createdAt,
+          },
+        })
+        .from(articles)
+        .leftJoin(categories, eq(articles.categoryId, categories.id))
+        .where(eq(articles.slug, slug));
+
+      if (!result) return undefined;
+      
+      // Add computed language-specific fields for API compatibility
+      return {
+        ...result,
+        title: result.titleEn,
+        excerpt: result.excerptEn,
+        content: result.contentEn,
+        metaDescription: result.metaDescriptionEn,
+      } as ArticleWithCategory;
+    } catch (error) {
+      console.error(`Database error in getArticleBySlug(${slug}):`, error);
+      throw error;
+    }
+  }
+
+  async getArticleById(id: number): Promise<ArticleWithCategory | undefined> {
+    const [result] = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        titleEn: articles.titleEn,
+        titleAr: articles.titleAr,
+        excerptEn: articles.excerptEn,
+        excerptAr: articles.excerptAr,
+        contentEn: articles.contentEn,
+        contentAr: articles.contentAr,
+        metaDescriptionEn: articles.metaDescriptionEn,
+        metaDescriptionAr: articles.metaDescriptionAr,
+        featuredImage: articles.featuredImage,
+        authorName: articles.authorName,
+        authorImage: articles.authorImage,
+        categoryId: articles.categoryId,
+        published: articles.published,
+        featured: articles.featured,
+        readingTime: articles.readingTime,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        category: {
+          id: categories.id,
+          slug: categories.slug,
+          nameEn: categories.nameEn,
+          nameAr: categories.nameAr,
+          descriptionEn: categories.descriptionEn,
+          descriptionAr: categories.descriptionAr,
+          iconName: categories.iconName,
+          createdAt: categories.createdAt,
+        },
+      })
+      .from(articles)
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .where(eq(articles.id, id));
+
+    if (!result) return undefined;
+    
+    // Add computed language-specific fields for API compatibility
+    return {
+      ...result,
+      title: result.titleEn,
+      excerpt: result.excerptEn,
+      content: result.contentEn,
+      metaDescription: result.metaDescriptionEn,
+    } as ArticleWithCategory;
+  }
+
+  async createArticle(article: InsertArticle): Promise<Article> {
+    const articleData = { ...article };
+    delete (articleData as any).publishNow;
+
+    if ((article as any).publishNow) {
+      articleData.published = true;
+      articleData.publishedAt = new Date();
+    }
+
+    const [newArticle] = await db.insert(articles).values(articleData).returning();
+    return newArticle;
+  }
+
+  async updateArticle(id: number, article: Partial<InsertArticle>): Promise<Article> {
+    const updateData = { ...article, updatedAt: new Date() };
+    delete (updateData as any).publishNow;
+
+    if ((article as any).publishNow) {
+      updateData.published = true;
+      updateData.publishedAt = new Date();
+    }
+
+    try {
+      const [updatedArticle] = await db
+        .update(articles)
+        .set(updateData)
+        .where(eq(articles.id, id))
+        .returning();
+      
+      if (!updatedArticle) {
+        throw new Error(`Article with id ${id} not found for update`);
+      }
+      
+      return updatedArticle;
+    } catch (error) {
+      console.error(`Database error updating article ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteArticle(id: number): Promise<void> {
+    await db.delete(articles).where(eq(articles.id, id));
+  }
+
+  async searchArticles(query: string, language = "en"): Promise<ArticleWithCategory[]> {
+    const titleField = language === "ar" ? articles.titleAr : articles.titleEn;
+    const contentField = language === "ar" ? articles.contentAr : articles.contentEn;
+
+    const results = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        titleEn: articles.titleEn,
+        titleAr: articles.titleAr,
+        excerptEn: articles.excerptEn,
+        excerptAr: articles.excerptAr,
+        contentEn: articles.contentEn,
+        contentAr: articles.contentAr,
+        metaDescriptionEn: articles.metaDescriptionEn,
+        metaDescriptionAr: articles.metaDescriptionAr,
+        featuredImage: articles.featuredImage,
+        authorName: articles.authorName,
+        authorImage: articles.authorImage,
+        categoryId: articles.categoryId,
+        published: articles.published,
+        featured: articles.featured,
+        readingTime: articles.readingTime,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        category: {
+          id: categories.id,
+          slug: categories.slug,
+          nameEn: categories.nameEn,
+          nameAr: categories.nameAr,
+          descriptionEn: categories.descriptionEn,
+          descriptionAr: categories.descriptionAr,
+          iconName: categories.iconName,
+          createdAt: categories.createdAt,
+        },
+      })
+      .from(articles)
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .where(
+        and(
+          eq(articles.published, true),
+          sql`(${titleField} ILIKE ${`%${query}%`} OR ${contentField} ILIKE ${`%${query}%`})`
+        )
+      )
+      .orderBy(desc(articles.publishedAt));
+
+    return results as ArticleWithCategory[];
+  }
+
+  // Newsletter operations
+  async subscribeToNewsletter(subscriber: InsertNewsletterSubscriber): Promise<NewsletterSubscriber> {
+    const [newSubscriber] = await db
+      .insert(newsletterSubscribers)
+      .values(subscriber)
+      .onConflictDoUpdate({
+        target: newsletterSubscribers.email,
+        set: {
+          active: true,
+          language: subscriber.language,
+        },
+      })
+      .returning();
+    return newSubscriber;
+  }
+
+  async getNewsletterSubscribers(): Promise<NewsletterSubscriber[]> {
+    return await db
+      .select()
+      .from(newsletterSubscribers)
+      .where(eq(newsletterSubscribers.active, true))
+      .orderBy(desc(newsletterSubscribers.subscribedAt));
+  }
+
+  // Contact operations
+  async submitContactForm(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const [newSubmission] = await db.insert(contactSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  async getContactSubmissions(): Promise<ContactSubmission[]> {
+    return await db
+      .select()
+      .from(contactSubmissions)
+      .orderBy(desc(contactSubmissions.submittedAt));
+  }
+
+  // Automation settings operations
+  async getAutomationSetting(key: string): Promise<boolean> {
+    const [setting] = await db
+      .select()
+      .from(automationSettings)
+      .where(eq(automationSettings.settingKey, key));
+    
+    return setting?.settingValue ?? true; // Default to true if not found
+  }
+
+  async setAutomationSetting(key: string, value: boolean): Promise<void> {
+    await db
+      .insert(automationSettings)
+      .values({
+        settingKey: key,
+        settingValue: value,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: automationSettings.settingKey,
+        set: {
+          settingValue: value,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  // API key operations
+  async getApiKeys(): Promise<ApiKey[]> {
+    return await db.select().from(apiKeys).orderBy(desc(apiKeys.createdAt));
+  }
+
+  async getApiKey(serviceName: string): Promise<ApiKey | undefined> {
+    const [result] = await db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.serviceName, serviceName))
+      .limit(1);
+    return result;
+  }
+
+  async createApiKey(apiKey: InsertApiKey): Promise<ApiKey> {
+    const [newApiKey] = await db.insert(apiKeys).values(apiKey).returning();
+    return newApiKey;
+  }
+
+  async updateApiKey(id: number, apiKey: Partial<InsertApiKey>): Promise<ApiKey> {
+    const [updatedApiKey] = await db
+      .update(apiKeys)
+      .set({ ...apiKey, updatedAt: new Date() })
+      .where(eq(apiKeys.id, id))
+      .returning();
+    return updatedApiKey;
+  }
+
+  async deleteApiKey(id: number): Promise<void> {
+    await db.delete(apiKeys).where(eq(apiKeys.id, id));
+  }
+
+  async updateApiKeyLastUsed(serviceName: string): Promise<void> {
+    await db
+      .update(apiKeys)
+      .set({ lastUsed: new Date() })
+      .where(eq(apiKeys.serviceName, serviceName));
+  }
+}
+
+export const storage = new DatabaseStorage();

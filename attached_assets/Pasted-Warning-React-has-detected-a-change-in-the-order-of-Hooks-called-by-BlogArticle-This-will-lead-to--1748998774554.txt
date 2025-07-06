@@ -1,0 +1,63 @@
+Warning: React has detected a change in the order of Hooks called by BlogArticle. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useContext                 useContext
+2. useContext                 useContext
+3. useSyncExternalStore       useSyncExternalStore
+4. useRef                     useRef
+5. useInsertionEffect         useInsertionEffect
+6. useState                   useState
+7. useEffect                  useEffect
+8. useState                   useState
+9. useContext                 useContext
+10. useContext                useContext
+11. useContext                useContext
+12. useEffect                 useEffect
+13. useState                  useState
+14. useCallback               useCallback
+15. useSyncExternalStore      useSyncExternalStore
+16. useEffect                 useEffect
+17. undefined                 useEffect
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+    at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+    at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+    at Router
+    at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+    at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+    at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+    at App
+Rendered more hooks than during the previous render.
+Rendered more hooks than during the previous render.
+The above error occurred in the <BlogArticle> component:
+
+    at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+    at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+    at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+    at Router
+    at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+    at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+    at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+at Router
+at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+at t.value (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Rendered more hooks than during the previous render.

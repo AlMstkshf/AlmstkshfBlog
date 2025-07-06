@@ -1,0 +1,39 @@
+[vite] connecting...
+[vite] connected.
+Warning: validateDOMNesting(...): <html> cannot appear as a child of &lt;head&gt;.
+    at html
+    at head
+    at div
+    at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+    at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+    at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+    at Router
+    at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+    at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+    at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+    at App
+Warning: validateDOMNesting(...): <head> cannot appear as a child of &lt;div&gt;.
+    at head
+    at div
+    at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+    at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+    at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+    at Router
+    at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+    at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+    at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+    at App
+at head
+at div
+at BlogArticle (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/src/pages/blog-article.tsx:36:41)
+at Route (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:323:16)
+at Switch (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=cf2eb62e:379:17)
+at Router
+at Provider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=cf2eb62e:38:15)
+at TooltipProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=cf2eb62e:61:5)
+at QueryClientProvider (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=cf2eb62e:2805:3)
+at App
+at t.value (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://e929939b-6915-47ca-9d51-86100ed4f6b9-00-28p3ecq0cf6rx.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
