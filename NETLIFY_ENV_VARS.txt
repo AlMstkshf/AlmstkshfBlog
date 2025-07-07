@@ -1,0 +1,36 @@
+NETLIFY ENVIRONMENT VARIABLES
+================================
+
+Copy these environment variables to Netlify Dashboard:
+Site Settings > Environment Variables > Add new variable
+
+1. DATABASE_URL
+   Value: postgresql://neondb_owner:npg_Gk09jLHaJBgE@ep-patient-river-a92t4n5z-pooler.gwc.azure.neon.tech/neondb?sslmode=require
+
+2. NODE_ENV
+   Value: production
+
+3. JWT_SECRET
+   Value: your-super-secret-jwt-key-change-this-in-production-2024-almstkshf-blog
+
+4. JWT_REFRESH_SECRET
+   Value: your-super-secret-refresh-key-change-this-in-production-2024-almstkshf-blog
+
+5. SITE_URL
+   Value: https://almstkshfblog.netlify.app
+
+6. ADMIN_EMAIL
+   Value: tamer2025ultimate@gmail.com
+
+IMPORTANT SECURITY NOTES:
+- Change JWT secrets to strong, unique values in production
+- Keep DATABASE_URL secure and never commit to version control
+- Verify all environment variables are set before deploying
+
+DEPLOYMENT CHECKLIST:
+□ All environment variables set in Netlify
+□ Build command: npm run build
+□ Publish directory: dist/public  
+□ Functions directory: netlify/functions
+□ GitHub repository connected
+□ Deploy triggered successfully
