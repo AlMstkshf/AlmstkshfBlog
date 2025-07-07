@@ -5,8 +5,8 @@
  * Tests the deployed application endpoints
  */
 
-const https = require('https');
-const http = require('http');
+import https from 'https';
+import http from 'http';
 
 const SITE_URL = 'https://almstkshfblog.netlify.app';
 
