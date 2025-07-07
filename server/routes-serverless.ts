@@ -19,6 +19,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import { cloudStorage } from "./cloud-storage";
 
 export async function registerServerlessRoutes(app: Express): Promise<void> {
   
@@ -242,6 +243,94 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error('Error fetching analytics:', error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
+  // File upload endpoint
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const uploadedFile = await cloudStorage.uploadFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Track analytics
+      analyticsTracker.trackEvent('file_uploaded', {
+        filename: uploadedFile.filename,
+        size: uploadedFile.size,
+        mimetype: uploadedFile.mimetype,
+        userAgent: req.headers['user-agent'],
+        ip: req.ip
+      });
+
+      res.json({
+        success: true,
+        file: uploadedFile
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // File download/serve endpoint
+  app.get("/api/files/:folder/:filename", async (req, res) => {
+    try {
+      const { folder, filename } = req.params;
+      const key = `${folder}/${filename}`;
+      
+      const fileData = await cloudStorage.getFile(key);
+      if (!fileData) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      // Set appropriate headers
+      const mimetype = fileData.metadata?.mimetype || 'application/octet-stream';
+      const originalName = fileData.metadata?.originalName || filename;
+      
+      res.set({
+        'Content-Type': mimetype,
+        'Content-Disposition': `inline; filename="${originalName}"`,
+        'Cache-Control': 'public, max-age=31536000'
+      });
+
+      // Track analytics
+      analyticsTracker.trackEvent('file_downloaded', {
+        key,
+        filename: originalName,
+        mimetype,
+        userAgent: req.headers['user-agent'],
+        ip: req.ip
+      });
+
+      res.send(fileData.buffer);
+    } catch (error) {
+      console.error('File download error:', error);
+      res.status(500).json({ error: "Failed to download file" });
+    }
+  });
+
+  // File deletion endpoint (admin only)
+  app.delete("/api/files/:folder/:filename", async (req, res) => {
+    try {
+      // TODO: Add authentication check here
+      const { folder, filename } = req.params;
+      const key = `${folder}/${filename}`;
+      
+      const deleted = await cloudStorage.deleteFile(key);
+      if (!deleted) {
+        return res.status(404).json({ error: "File not found or failed to delete" });
+      }
+
+      res.json({ success: true, message: "File deleted successfully" });
+    } catch (error) {
+      console.error('File deletion error:', error);
+      res.status(500).json({ error: "Failed to delete file" });
     }
   });
 }

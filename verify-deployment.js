@@ -15,6 +15,9 @@ const endpoints = [
   { path: '/api/health', name: 'Health Check' },
   { path: '/api/articles', name: 'Articles API' },
   { path: '/api/categories', name: 'Categories API' },
+  { path: '/api/analytics', name: 'Analytics API' },
+  { path: '/api/sitemap.xml', name: 'Sitemap' },
+  { path: '/api/rss.xml', name: 'RSS Feed' },
   { path: '/blog', name: 'Blog Page' },
   { path: '/about', name: 'About Page' },
   { path: '/contact', name: 'Contact Page' }
@@ -89,8 +92,10 @@ async function verifyDeployment() {
   console.log('1. Test bilingual functionality (English/Arabic)');
   console.log('2. Test contact form submission');
   console.log('3. Test newsletter subscription');
-  console.log('4. Check serverless function logs in Netlify dashboard');
-  console.log('5. Verify database operations');
+  console.log('4. Test file upload functionality (POST /api/upload)');
+  console.log('5. Check serverless function logs in Netlify dashboard');
+  console.log('6. Verify database operations');
+  console.log('7. Test cloud storage file serving');
 }
 
 // Run verification

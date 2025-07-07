@@ -2234,6 +2234,115 @@ function registerN8NRoutes(app2) {
 
 // server/routes-serverless.ts
 import multer from "multer";
+
+// server/cloud-storage.ts
+import { getStore } from "@netlify/blobs";
+import crypto from "crypto";
+import path from "path";
+var CloudStorageService = class {
+  store;
+  constructor() {
+    this.store = getStore("uploads");
+  }
+  /**
+   * Upload a file to Netlify Blobs
+   */
+  async uploadFile(buffer, originalName, mimetype) {
+    try {
+      const ext = path.extname(originalName);
+      const name = path.basename(originalName, ext);
+      const timestamp2 = Date.now();
+      const hash = crypto.randomBytes(8).toString("hex");
+      const filename = `${name}-${timestamp2}-${hash}${ext}`;
+      let folder = "files";
+      if (mimetype.startsWith("image/")) {
+        folder = "images";
+      } else if (mimetype === "application/pdf") {
+        folder = "pdfs";
+      } else if (mimetype.includes("document") || mimetype.includes("text")) {
+        folder = "documents";
+      }
+      const key = `${folder}/${filename}`;
+      await this.store.set(key, buffer, {
+        metadata: {
+          originalName,
+          mimetype,
+          size: buffer.length.toString(),
+          uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      });
+      const url = await this.store.getURL(key);
+      return {
+        filename,
+        originalName,
+        size: buffer.length,
+        mimetype,
+        url: url || `/api/files/${key}`,
+        key
+      };
+    } catch (error) {
+      console.error("Error uploading file to cloud storage:", error);
+      throw new Error("Failed to upload file");
+    }
+  }
+  /**
+   * Get file from Netlify Blobs
+   */
+  async getFile(key) {
+    try {
+      const blob = await this.store.get(key, { type: "arrayBuffer" });
+      if (!blob) return null;
+      const metadata = await this.store.getMetadata(key);
+      return {
+        buffer: Buffer.from(blob),
+        metadata
+      };
+    } catch (error) {
+      console.error("Error getting file from cloud storage:", error);
+      return null;
+    }
+  }
+  /**
+   * Delete file from Netlify Blobs
+   */
+  async deleteFile(key) {
+    try {
+      await this.store.delete(key);
+      return true;
+    } catch (error) {
+      console.error("Error deleting file from cloud storage:", error);
+      return false;
+    }
+  }
+  /**
+   * List files in a folder
+   */
+  async listFiles(folder) {
+    try {
+      const { blobs } = await this.store.list({
+        prefix: folder ? `${folder}/` : void 0
+      });
+      return blobs.map((blob) => blob.key);
+    } catch (error) {
+      console.error("Error listing files from cloud storage:", error);
+      return [];
+    }
+  }
+  /**
+   * Get file URL for serving
+   */
+  async getFileUrl(key) {
+    try {
+      return await this.store.getURL(key);
+    } catch (error) {
+      console.error("Error getting file URL:", error);
+      return null;
+    }
+  }
+};
+var cloudStorage = new CloudStorageService();
+
+// server/routes-serverless.ts
 async function registerServerlessRoutes(app2) {
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -2405,6 +2514,74 @@ async function registerServerlessRoutes(app2) {
     } catch (error) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+  app2.post("/api/upload", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      const uploadedFile = await cloudStorage.uploadFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+      analyticsTracker.trackEvent("file_uploaded", {
+        filename: uploadedFile.filename,
+        size: uploadedFile.size,
+        mimetype: uploadedFile.mimetype,
+        userAgent: req.headers["user-agent"],
+        ip: req.ip
+      });
+      res.json({
+        success: true,
+        file: uploadedFile
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+  app2.get("/api/files/:folder/:filename", async (req, res) => {
+    try {
+      const { folder, filename } = req.params;
+      const key = `${folder}/${filename}`;
+      const fileData = await cloudStorage.getFile(key);
+      if (!fileData) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      const mimetype = fileData.metadata?.mimetype || "application/octet-stream";
+      const originalName = fileData.metadata?.originalName || filename;
+      res.set({
+        "Content-Type": mimetype,
+        "Content-Disposition": `inline; filename="${originalName}"`,
+        "Cache-Control": "public, max-age=31536000"
+      });
+      analyticsTracker.trackEvent("file_downloaded", {
+        key,
+        filename: originalName,
+        mimetype,
+        userAgent: req.headers["user-agent"],
+        ip: req.ip
+      });
+      res.send(fileData.buffer);
+    } catch (error) {
+      console.error("File download error:", error);
+      res.status(500).json({ error: "Failed to download file" });
+    }
+  });
+  app2.delete("/api/files/:folder/:filename", async (req, res) => {
+    try {
+      const { folder, filename } = req.params;
+      const key = `${folder}/${filename}`;
+      const deleted = await cloudStorage.deleteFile(key);
+      if (!deleted) {
+        return res.status(404).json({ error: "File not found or failed to delete" });
+      }
+      res.json({ success: true, message: "File deleted successfully" });
+    } catch (error) {
+      console.error("File deletion error:", error);
+      res.status(500).json({ error: "Failed to delete file" });
     }
   });
 }
