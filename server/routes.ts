@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     successResponse(res, category, "Category created successfully", 201);
   }));
 
-  // Articles API
+  // Articles API with enhanced pagination
   app.get("/api/articles", async (req, res) => {
     try {
       const {
@@ -224,20 +224,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         published = "true",
         limit = "20",
         offset = "0",
-        language = "en"
+        cursor,
+        language = "en",
+        sortBy = "publishedAt",
+        sortOrder = "desc"
       } = req.query;
+
+      const parsedLimit = Math.min(parseInt(limit as string), 100); // Max 100 items per request
+      const parsedOffset = parseInt(offset as string);
 
       const options = {
         categoryId: categoryId ? parseInt(categoryId as string) : undefined,
         featured: featured === "true" ? true : featured === "false" ? false : undefined,
         published: published === "true",
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
+        limit: parsedLimit,
+        offset: parsedOffset,
+        cursor: cursor as string,
         language: language as string,
+        sortBy: sortBy as string,
+        sortOrder: sortOrder as 'asc' | 'desc'
       };
 
-      const articles = await storage.getArticles(options);
-      res.json(articles);
+      const result = await storage.getArticlesWithPagination(options);
+      
+      // Add pagination metadata
+      const response = {
+        data: result.articles,
+        pagination: {
+          total: result.total,
+          limit: parsedLimit,
+          offset: parsedOffset,
+          hasNext: result.hasNext,
+          hasPrev: parsedOffset > 0,
+          nextCursor: result.nextCursor,
+          totalPages: Math.ceil(result.total / parsedLimit),
+          currentPage: Math.floor(parsedOffset / parsedLimit) + 1
+        }
+      };
+
+      // Add cache headers for better performance
+      res.set({
+        'Cache-Control': 'public, max-age=300', // 5 minutes cache
+        'ETag': `"articles-${JSON.stringify(options).replace(/[^a-zA-Z0-9]/g, '')}-${result.total}"`
+      });
+
+      res.json(response);
     } catch (error) {
       console.error("Error fetching articles:", error);
       res.status(500).json({ message: "Failed to fetch articles" });

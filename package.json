@@ -5,10 +5,14 @@
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm run build:client && npm run build:functions",
+    "build:client": "vite build",
+    "build:functions": "esbuild netlify/functions/api.ts --platform=node --packages=external --bundle --format=esm --outdir=netlify/functions --out-extension:.js=.js --external:@neondatabase/serverless --external:drizzle-orm --external:zod --external:bcryptjs --external:jsonwebtoken --external:@sendgrid/mail --external:nodemailer --external:openai --external:@anthropic-ai/sdk",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "netlify:dev": "netlify dev",
+    "netlify:build": "npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -90,7 +94,8 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.2.7",
@@ -106,6 +111,8 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
+    "@netlify/functions": "^2.8.1",
+    "netlify-cli": "^17.36.4",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",

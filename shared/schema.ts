@@ -59,7 +59,21 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for pagination and filtering
+  index("idx_articles_published_at").on(table.publishedAt),
+  index("idx_articles_category_id").on(table.categoryId),
+  index("idx_articles_published").on(table.published),
+  index("idx_articles_featured").on(table.featured),
+  index("idx_articles_created_at").on(table.createdAt),
+  // Composite indexes for common query patterns
+  index("idx_articles_published_published_at").on(table.published, table.publishedAt),
+  index("idx_articles_category_published").on(table.categoryId, table.published),
+  index("idx_articles_featured_published").on(table.featured, table.published),
+  // Full-text search support (for future implementation)
+  index("idx_articles_title_en").on(table.titleEn),
+  index("idx_articles_title_ar").on(table.titleAr),
+]);
 
 // Newsletter subscribers table
 export const newsletterSubscribers = pgTable("newsletter_subscribers", {

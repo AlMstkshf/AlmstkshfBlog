@@ -33,6 +33,22 @@ export interface IStorage {
     offset?: number;
     language?: string;
   }): Promise<ArticleWithCategory[]>;
+  getArticlesWithPagination(options?: {
+    categoryId?: number;
+    featured?: boolean;
+    published?: boolean;
+    limit?: number;
+    offset?: number;
+    cursor?: string;
+    language?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{
+    articles: ArticleWithCategory[];
+    total: number;
+    hasNext: boolean;
+    nextCursor?: string;
+  }>;
   getArticleBySlug(slug: string): Promise<ArticleWithCategory | undefined>;
   getArticleById(id: number): Promise<ArticleWithCategory | undefined>;
   createArticle(article: InsertArticle): Promise<Article>;
@@ -205,6 +221,196 @@ export class DatabaseStorage implements IStorage {
       // Content is excluded from listing for performance
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn,
     })) as ArticleWithCategory[];
+  }
+
+  async getArticlesWithPagination(options: {
+    categoryId?: number;
+    featured?: boolean;
+    published?: boolean;
+    limit?: number;
+    offset?: number;
+    cursor?: string;
+    language?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}): Promise<{
+    articles: ArticleWithCategory[];
+    total: number;
+    hasNext: boolean;
+    nextCursor?: string;
+  }> {
+    const { 
+      categoryId, 
+      featured, 
+      published = true, 
+      limit = 20, 
+      offset = 0, 
+      cursor,
+      language = "en",
+      sortBy = "publishedAt",
+      sortOrder = "desc"
+    } = options;
+
+    // Build base conditions
+    const conditions = [];
+    if (published !== undefined) conditions.push(eq(articles.published, published));
+    if (featured !== undefined) conditions.push(eq(articles.featured, featured));
+    if (categoryId !== undefined) conditions.push(eq(articles.categoryId, categoryId));
+
+    // Handle cursor-based pagination
+    if (cursor) {
+      try {
+        const cursorData = JSON.parse(Buffer.from(cursor, 'base64').toString());
+        const { id, value } = cursorData;
+        
+        if (sortBy === "publishedAt") {
+          if (sortOrder === "desc") {
+            conditions.push(
+              or(
+                sql`${articles.publishedAt} < ${new Date(value)}`,
+                and(
+                  sql`${articles.publishedAt} = ${new Date(value)}`,
+                  sql`${articles.id} < ${id}`
+                )
+              )
+            );
+          } else {
+            conditions.push(
+              or(
+                sql`${articles.publishedAt} > ${new Date(value)}`,
+                and(
+                  sql`${articles.publishedAt} = ${new Date(value)}`,
+                  sql`${articles.id} > ${id}`
+                )
+              )
+            );
+          }
+        } else if (sortBy === "id") {
+          if (sortOrder === "desc") {
+            conditions.push(sql`${articles.id} < ${id}`);
+          } else {
+            conditions.push(sql`${articles.id} > ${id}`);
+          }
+        }
+      } catch (error) {
+        console.warn("Invalid cursor provided, ignoring:", error);
+      }
+    }
+
+    // Get total count for pagination metadata
+    let countQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(articles);
+
+    if (conditions.length > 0) {
+      const countConditions = conditions.filter(condition => 
+        !condition.toString().includes('publishedAt') || 
+        !condition.toString().includes('id')
+      );
+      if (countConditions.length > 0) {
+        countQuery = countQuery.where(and(...countConditions));
+      }
+    }
+
+    const [{ count: total }] = await countQuery;
+
+    // Build main query
+    let query = db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        titleEn: articles.titleEn,
+        titleAr: articles.titleAr,
+        excerptEn: articles.excerptEn,
+        excerptAr: articles.excerptAr,
+        // Content is excluded from listing for performance
+        metaDescriptionEn: articles.metaDescriptionEn,
+        metaDescriptionAr: articles.metaDescriptionAr,
+        featuredImage: articles.featuredImage,
+        authorName: articles.authorName,
+        authorImage: articles.authorImage,
+        categoryId: articles.categoryId,
+        published: articles.published,
+        featured: articles.featured,
+        readingTime: articles.readingTime,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        category: {
+          id: categories.id,
+          slug: categories.slug,
+          nameEn: categories.nameEn,
+          nameAr: categories.nameAr,
+          descriptionEn: categories.descriptionEn,
+          descriptionAr: categories.descriptionAr,
+          iconName: categories.iconName,
+          createdAt: categories.createdAt,
+        },
+      })
+      .from(articles)
+      .leftJoin(categories, eq(articles.categoryId, categories.id));
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    // Apply sorting
+    if (sortBy === "publishedAt") {
+      query = query.orderBy(
+        sortOrder === "desc" ? desc(articles.publishedAt) : asc(articles.publishedAt),
+        sortOrder === "desc" ? desc(articles.id) : asc(articles.id) // Secondary sort for consistency
+      );
+    } else if (sortBy === "createdAt") {
+      query = query.orderBy(
+        sortOrder === "desc" ? desc(articles.createdAt) : asc(articles.createdAt),
+        sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
+      );
+    } else if (sortBy === "id") {
+      query = query.orderBy(
+        sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
+      );
+    } else {
+      // Default to publishedAt
+      query = query.orderBy(desc(articles.publishedAt), desc(articles.id));
+    }
+
+    // Apply limit and offset
+    const results = await query.limit(limit + 1).offset(cursor ? 0 : offset);
+
+    // Determine if there are more results
+    const hasNext = results.length > limit;
+    const articlesData = hasNext ? results.slice(0, limit) : results;
+
+    // Generate next cursor
+    let nextCursor: string | undefined;
+    if (hasNext && articlesData.length > 0) {
+      const lastArticle = articlesData[articlesData.length - 1];
+      const cursorValue = sortBy === "publishedAt" 
+        ? lastArticle.publishedAt?.toISOString()
+        : sortBy === "createdAt"
+        ? lastArticle.createdAt?.toISOString()
+        : lastArticle.id.toString();
+      
+      nextCursor = Buffer.from(JSON.stringify({
+        id: lastArticle.id,
+        value: cursorValue
+      })).toString('base64');
+    }
+
+    // Add computed language-specific fields for API compatibility
+    const processedArticles = articlesData.map(article => ({
+      ...article,
+      title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
+      excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
+      metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn,
+    })) as ArticleWithCategory[];
+
+    return {
+      articles: processedArticles,
+      total,
+      hasNext,
+      nextCursor
+    };
   }
 
   async getArticleBySlug(slug: string): Promise<ArticleWithCategory | undefined> {
