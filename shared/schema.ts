@@ -192,3 +192,8 @@ export type ApiKeySelect = typeof apiKeys.$inferSelect;
 export type ApiKeyInsert = z.infer<typeof insertApiKeySchema>;
 export type DownloadSelect = typeof downloads.$inferSelect;
 export type DownloadInsert = z.infer<typeof insertDownloadSchema>;
+
+// Extended types with relations
+export type ArticleWithCategory = ArticleSelect & {
+  category?: CategorySelect;
+};

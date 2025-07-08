@@ -51,10 +51,6 @@ app.use((req, res, next) => {
 
     const server = await registerRoutes(app);
 
-    // Use centralized error handler
-    app.use(notFoundHandler);
-    app.use(errorHandler);
-
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
@@ -63,6 +59,11 @@ app.use((req, res, next) => {
     } else {
       serveStatic(app);
     }
+
+    // Use centralized error handler AFTER Vite setup
+    // This ensures that non-API routes are handled by Vite first
+    app.use(notFoundHandler);
+    app.use(errorHandler);
 
     // ALWAYS serve the app on port 5000
     // this serves both the API and the client.
@@ -83,15 +84,15 @@ app.use((req, res, next) => {
       try {
         const server = await registerRoutes(app);
         
-        // Add error middleware
-        app.use(notFoundHandler);
-        app.use(errorHandler);
-
         if (app.get("env") === "development") {
           await setupVite(app, server);
         } else {
           serveStatic(app);
         }
+
+        // Add error middleware AFTER Vite setup
+        app.use(notFoundHandler);
+        app.use(errorHandler);
 
         const port = 5000;
         server.listen(port, "localhost", () => {

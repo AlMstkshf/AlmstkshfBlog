@@ -20,6 +20,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminCategories from "@/pages/admin/categories";
 import AdminSettings from "@/pages/admin/settings";
 import ContentStrategyPage from "@/pages/admin/content-strategy";
+import ArticleEditor from "@/pages/admin/article-editor";
 import Downloads from "@/pages/downloads-minimal";
 import AdminDownloads from "@/pages/admin-downloads";
 import PlatformAnalysis from "@/pages/platform-analysis";
@@ -38,12 +39,14 @@ function Router() {
       {/* Admin routes - MUST come first to avoid conflicts */}
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin" component={() => <Redirect to="/admin/dashboard" />} />
-      <Route path="/admin/dashboard" component={AdminDashboard} />
-      <Route path="/admin/categories" component={AdminCategories} />
-      <Route path="/admin/settings" component={AdminSettings} />
-      <Route path="/admin/content-strategy" component={ContentStrategyPage} />
+      <Route path="/admin/dashboard" component={() => <ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/categories" component={() => <ProtectedRoute requiredRole="admin"><AdminCategories /></ProtectedRoute>} />
+      <Route path="/admin/settings" component={() => <ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
+      <Route path="/admin/content-strategy" component={() => <ProtectedRoute requiredRole="admin"><ContentStrategyPage /></ProtectedRoute>} />
       <Route path="/admin/automation" component={() => <ProtectedRoute requiredRole="admin"><AutomationDashboard /></ProtectedRoute>} />
       <Route path="/admin/downloads" component={() => <ProtectedRoute requiredRole="admin"><AdminDownloads /></ProtectedRoute>} />
+      <Route path="/admin/articles/new" component={() => <ProtectedRoute requiredRole="admin"><ArticleEditor /></ProtectedRoute>} />
+      <Route path="/admin/articles/:id" component={() => <ProtectedRoute requiredRole="admin"><ArticleEditor /></ProtectedRoute>} />
       
       {/* Static pages - MUST come first to avoid conflicts */}
       <Route path="/contact" component={ContactPage} />
@@ -96,4 +99,15 @@ function Router() {
   );
 }
 
-export { default } from "@/components/stable-app";
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AppWrapper>
+          <Toaster />
+          <Router />
+        </AppWrapper>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}

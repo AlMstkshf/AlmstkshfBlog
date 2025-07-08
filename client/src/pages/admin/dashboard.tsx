@@ -138,10 +138,12 @@ function AdminDashboardContent() {
                 <span>Settings</span>
               </Button>
             </Link>
-            <Button disabled className="flex items-center space-x-2" title="Article creation requires backend API">
-              <Plus className="w-4 h-4" />
-              <span>New Article (Disabled)</span>
-            </Button>
+            <Link href="/admin/articles/new">
+              <Button className="flex items-center space-x-2">
+                <Plus className="w-4 h-4" />
+                <span>New Article</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -238,9 +240,11 @@ function AdminDashboardContent() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Button variant="outline" size="sm" disabled title="Editing requires backend API">
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                          <Link href={`/admin/articles/${article.id}`}>
+                            <Button variant="outline" size="sm">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="outline"
                             size="sm"
@@ -320,9 +324,11 @@ function AdminDashboardContent() {
                               </Button>
                             </Link>
                           )}
-                          <Button variant="outline" size="sm" disabled title="Editing requires backend API">
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                          <Link href={`/admin/articles/${article.id}`}>
+                            <Button variant="outline" size="sm">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="outline"
                             size="sm"

@@ -507,7 +507,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File upload endpoint
+  // General file upload endpoint (for article images, etc.)
+  app.post("/api/upload", requireAuth, requireAdmin, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      throw new ValidationError("No file uploaded");
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    successResponse(res, {
+      url: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    }, "File uploaded successfully", 201);
+  }));
+
+  // File upload endpoint for downloads
   app.post("/api/downloads/upload", upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
