@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { ImageUploadManager } from './image-upload-manager';
 import {
   Bold,
   Italic,
@@ -41,6 +43,7 @@ export function RichTextEditor({ content, onChange, placeholder, language }: Ric
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const [showImageDialog, setShowImageDialog] = useState(false);
+  const [showImageManager, setShowImageManager] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageAlt, setImageAlt] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -203,7 +206,7 @@ export function RichTextEditor({ content, onChange, placeholder, language }: Ric
       group: 'media',
       buttons: [
         { icon: Link2, action: () => setShowLinkDialog(true), title: language === 'ar' ? 'إدراج رابط' : 'Insert Link' },
-        { icon: Image, action: () => fileInputRef.current?.click(), title: language === 'ar' ? 'رفع صورة' : 'Upload Image' },
+        { icon: Image, action: () => setShowImageManager(true), title: language === 'ar' ? 'إدارة الصور' : 'Image Manager' },
       ]
     },
     {

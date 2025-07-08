@@ -706,6 +706,44 @@ Crawl-delay: 1`;
     }
   });
 
+  // AI Content Generation routes
+  app.post("/api/ai/generate-content", requireAuth, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { aiContentGenerator } = await import('./ai-content-generator');
+      const { type, language, title, category, existingContent, tone, length } = req.body;
+
+      if (!type || !language) {
+        throw new ValidationError("Type and language are required");
+      }
+
+      const result = await aiContentGenerator.generateContent({
+        type,
+        language,
+        title,
+        category,
+        existingContent,
+        tone,
+        length
+      });
+
+      successResponse(res, result, "Content generated successfully");
+    } catch (error) {
+      console.error("AI content generation error:", error);
+      throw error;
+    }
+  }));
+
+  app.get("/api/ai/services", requireAuth, requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { aiContentGenerator } = await import('./ai-content-generator');
+      const services = aiContentGenerator.getAvailableServices();
+      successResponse(res, { services }, "Available AI services retrieved");
+    } catch (error) {
+      console.error("Error getting AI services:", error);
+      throw error;
+    }
+  }));
+
   // Mount automation routes
   app.use("/api/automation", automationRouter);
 

@@ -14,7 +14,7 @@ import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { useToast } from '@/hooks/use-toast';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useAuth } from '@/hooks/use-auth';
-import { ArrowLeft, Save, Eye, Globe, Calendar, User, Tag, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Eye, Globe, Calendar, User, Tag, Image as ImageIcon, Sparkles, Clock, Hash } from 'lucide-react';
 import { type ArticleWithCategory, type Category } from '@shared/schema';
 
 function ArticleEditorContent() {
@@ -33,20 +33,40 @@ function ArticleEditorContent() {
     contentAr: '',
     excerptEn: '',
     excerptAr: '',
+    metaDescriptionEn: '',
+    metaDescriptionAr: '',
     categoryId: '',
     authorName: '',
+    authorImage: '',
     featuredImage: '',
     published: false,
     featured: false,
     slug: '',
-    metaTitle: '',
-    metaDescription: '',
-    keywords: '',
-    canonicalUrl: ''
+    readingTime: 0,
+    publishedAt: '',
+    tags: [] as string[]
   });
 
   const [activeLanguage, setActiveLanguage] = useState<'en' | 'ar'>('en');
   const [previewMode, setPreviewMode] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+
+  // Calculate reading time based on content
+  const calculateReadingTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const textContent = content.replace(/<[^>]*>/g, ''); // Remove HTML tags
+    const wordCount = textContent.split(/\s+/).filter(word => word.length > 0).length;
+    return Math.ceil(wordCount / wordsPerMinute);
+  };
+
+  // Update reading time when content changes
+  useEffect(() => {
+    const primaryContent = activeLanguage === 'en' ? formData.contentEn : formData.contentAr;
+    if (primaryContent) {
+      const readingTime = calculateReadingTime(primaryContent);
+      setFormData(prev => ({ ...prev, readingTime }));
+    }
+  }, [formData.contentEn, formData.contentAr, activeLanguage]);
 
   // Fetch article data for editing
   const { data: article, isLoading: articleLoading } = useQuery<ArticleWithCategory>({
@@ -79,16 +99,18 @@ function ArticleEditorContent() {
         contentAr: article.contentAr || '',
         excerptEn: article.excerptEn || '',
         excerptAr: article.excerptAr || '',
+        metaDescriptionEn: article.metaDescriptionEn || '',
+        metaDescriptionAr: article.metaDescriptionAr || '',
         categoryId: article.categoryId?.toString() || '',
         authorName: article.authorName || '',
+        authorImage: article.authorImage || '',
         featuredImage: article.featuredImage || '',
         published: article.published || false,
         featured: article.featured || false,
         slug: article.slug || '',
-        metaTitle: article.metaTitle || '',
-        metaDescription: article.metaDescription || '',
-        keywords: article.keywords || '',
-        canonicalUrl: article.canonicalUrl || ''
+        readingTime: article.readingTime || 0,
+        publishedAt: article.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '',
+        tags: []
       });
     }
   }, [article]);
@@ -112,10 +134,10 @@ function ArticleEditorContent() {
       const payload = {
         ...data,
         categoryId: parseInt(data.categoryId),
-        // Generate meta fields if not provided
-        metaTitle: data.metaTitle || (activeLanguage === 'en' ? data.titleEn : data.titleAr),
-        metaDescription: data.metaDescription || (activeLanguage === 'en' ? data.excerptEn : data.excerptAr),
-        canonicalUrl: data.canonicalUrl || `${window.location.origin}/${activeLanguage}/blog/${categories.find(c => c.id === parseInt(data.categoryId))?.slug}/${data.slug}`
+        publishedAt: data.publishedAt ? new Date(data.publishedAt).toISOString() : null,
+        // Auto-generate meta descriptions if not provided
+        metaDescriptionEn: data.metaDescriptionEn || data.excerptEn?.substring(0, 160),
+        metaDescriptionAr: data.metaDescriptionAr || data.excerptAr?.substring(0, 160)
       };
 
       const response = await authenticatedFetch(
@@ -215,6 +237,68 @@ function ArticleEditorContent() {
     }
   };
 
+  // AI Content Generation
+  const generateContent = async (type: 'title' | 'excerpt' | 'content', language: 'en' | 'ar') => {
+    if (!formData.titleEn && type !== 'title') {
+      toast({
+        title: 'Error',
+        description: 'Please provide a title first to generate content',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    try {
+      const response = await authenticatedFetch('/api/ai/generate-content', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          language,
+          title: formData.titleEn || formData.titleAr,
+          category: categories.find(c => c.id === parseInt(formData.categoryId))?.nameEn,
+          existingContent: type === 'content' ? (language === 'en' ? formData.contentEn : formData.contentAr) : undefined
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (type === 'title') {
+          setFormData(prev => ({
+            ...prev,
+            [language === 'en' ? 'titleEn' : 'titleAr']: result.content
+          }));
+        } else if (type === 'excerpt') {
+          setFormData(prev => ({
+            ...prev,
+            [language === 'en' ? 'excerptEn' : 'excerptAr']: result.content
+          }));
+        } else if (type === 'content') {
+          setFormData(prev => ({
+            ...prev,
+            [language === 'en' ? 'contentEn' : 'contentAr']: result.content
+          }));
+        }
+
+        toast({
+          title: 'Success',
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} generated successfully`,
+        });
+      } else {
+        throw new Error('Generation failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to generate ${type}. Please try again.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   if (articleLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -311,9 +395,22 @@ function ArticleEditorContent() {
             <CardContent className="space-y-6">
               {/* Title */}
               <div>
-                <Label htmlFor={`title-${activeLanguage}`}>
-                  Title {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
-                </Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor={`title-${activeLanguage}`}>
+                    Title {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => generateContent('title', activeLanguage)}
+                    disabled={isGeneratingContent}
+                    className="flex items-center space-x-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{isGeneratingContent ? 'Generating...' : 'AI Generate'}</span>
+                  </Button>
+                </div>
                 <Input
                   id={`title-${activeLanguage}`}
                   value={activeLanguage === 'en' ? formData.titleEn : formData.titleAr}
@@ -329,9 +426,22 @@ function ArticleEditorContent() {
 
               {/* Excerpt */}
               <div>
-                <Label htmlFor={`excerpt-${activeLanguage}`}>
-                  Excerpt {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
-                </Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor={`excerpt-${activeLanguage}`}>
+                    Excerpt {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => generateContent('excerpt', activeLanguage)}
+                    disabled={isGeneratingContent || (!formData.titleEn && !formData.titleAr)}
+                    className="flex items-center space-x-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{isGeneratingContent ? 'Generating...' : 'AI Generate'}</span>
+                  </Button>
+                </div>
                 <Textarea
                   id={`excerpt-${activeLanguage}`}
                   value={activeLanguage === 'en' ? formData.excerptEn : formData.excerptAr}
@@ -347,9 +457,22 @@ function ArticleEditorContent() {
 
               {/* Rich Text Editor */}
               <div>
-                <Label>
-                  Content {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
-                </Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>
+                    Content {activeLanguage === 'ar' ? '(Arabic)' : '(English)'}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => generateContent('content', activeLanguage)}
+                    disabled={isGeneratingContent || (!formData.titleEn && !formData.titleAr)}
+                    className="flex items-center space-x-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{isGeneratingContent ? 'Generating...' : 'AI Generate'}</span>
+                  </Button>
+                </div>
                 <div className="mt-2">
                   <RichTextEditor
                     content={activeLanguage === 'en' ? formData.contentEn : formData.contentAr}
@@ -443,6 +566,16 @@ function ArticleEditorContent() {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: checked }))}
                 />
               </div>
+
+              <div>
+                <Label htmlFor="publishedAt">Publish Date</Label>
+                <Input
+                  id="publishedAt"
+                  type="datetime-local"
+                  value={formData.publishedAt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -464,6 +597,16 @@ function ArticleEditorContent() {
                   placeholder="Author name"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="authorImage">Author Image URL</Label>
+                <Input
+                  id="authorImage"
+                  value={formData.authorImage}
+                  onChange={(e) => setFormData(prev => ({ ...prev, authorImage: e.target.value }))}
+                  placeholder="https://example.com/author.jpg"
+                />
+              </div>
               
               <div>
                 <Label htmlFor="slug">URL Slug</Label>
@@ -472,6 +615,21 @@ function ArticleEditorContent() {
                   value={formData.slug}
                   onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
                   placeholder="article-url-slug"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="readingTime" className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4" />
+                  <span>Reading Time (minutes)</span>
+                </Label>
+                <Input
+                  id="readingTime"
+                  type="number"
+                  value={formData.readingTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, readingTime: parseInt(e.target.value) || 0 }))}
+                  placeholder="Auto-calculated"
+                  min="1"
                 />
               </div>
               
