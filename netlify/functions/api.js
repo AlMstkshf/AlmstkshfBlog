@@ -2239,13 +2239,34 @@ import multer from "multer";
 import { getStore } from "@netlify/blobs";
 import crypto from "crypto";
 import path from "path";
+import fs from "fs/promises";
+import { existsSync } from "fs";
 var CloudStorageService = class {
-  store;
+  store = null;
+  useLocalStorage = false;
+  localStoragePath;
   constructor() {
-    this.store = getStore("uploads");
+    this.localStoragePath = path.join(process.cwd(), "uploads");
+    try {
+      this.store = getStore("uploads");
+      console.log("\u2705 Netlify Blobs initialized successfully");
+    } catch (error) {
+      console.log("\u26A0\uFE0F  Netlify Blobs not available, falling back to local storage");
+      this.useLocalStorage = true;
+      this.ensureLocalDirectories();
+    }
+  }
+  async ensureLocalDirectories() {
+    const dirs = ["images", "documents", "pdfs", "files"];
+    for (const dir of dirs) {
+      const dirPath = path.join(this.localStoragePath, dir);
+      if (!existsSync(dirPath)) {
+        await fs.mkdir(dirPath, { recursive: true });
+      }
+    }
   }
   /**
-   * Upload a file to Netlify Blobs
+   * Upload a file to cloud storage (Netlify Blobs) or local storage
    */
   async uploadFile(buffer, originalName, mimetype) {
     try {
@@ -2263,54 +2284,107 @@ var CloudStorageService = class {
         folder = "documents";
       }
       const key = `${folder}/${filename}`;
-      await this.store.set(key, buffer, {
-        metadata: {
+      if (this.useLocalStorage) {
+        await this.ensureLocalDirectories();
+        const filePath = path.join(this.localStoragePath, key);
+        await fs.writeFile(filePath, buffer);
+        return {
+          filename,
           originalName,
+          size: buffer.length,
           mimetype,
-          size: buffer.length.toString(),
-          uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      });
-      const url = await this.store.getURL(key);
-      return {
-        filename,
-        originalName,
-        size: buffer.length,
-        mimetype,
-        url: url || `/api/files/${key}`,
-        key
-      };
+          url: `/uploads/${key}`,
+          key
+        };
+      } else {
+        await this.store.set(key, buffer, {
+          metadata: {
+            originalName,
+            mimetype,
+            size: buffer.length.toString(),
+            uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
+          }
+        });
+        const url = await this.store.getURL(key);
+        return {
+          filename,
+          originalName,
+          size: buffer.length,
+          mimetype,
+          url: url || `/api/files/${key}`,
+          key
+        };
+      }
     } catch (error) {
-      console.error("Error uploading file to cloud storage:", error);
+      console.error("Error uploading file to storage:", error);
       throw new Error("Failed to upload file");
     }
   }
   /**
-   * Get file from Netlify Blobs
+   * Get file from storage
    */
   async getFile(key) {
     try {
-      const blob = await this.store.get(key, { type: "arrayBuffer" });
-      if (!blob) return null;
-      const metadata = await this.store.getMetadata(key);
-      return {
-        buffer: Buffer.from(blob),
-        metadata
-      };
+      if (this.useLocalStorage) {
+        const filePath = path.join(this.localStoragePath, key);
+        if (!existsSync(filePath)) return null;
+        const buffer = await fs.readFile(filePath);
+        const stats = await fs.stat(filePath);
+        return {
+          buffer,
+          metadata: {
+            size: stats.size.toString(),
+            uploadedAt: stats.mtime.toISOString(),
+            originalName: path.basename(key),
+            mimetype: this.getMimetypeFromExtension(path.extname(key))
+          }
+        };
+      } else {
+        const blob = await this.store.get(key, { type: "arrayBuffer" });
+        if (!blob) return null;
+        const metadata = await this.store.getMetadata(key);
+        return {
+          buffer: Buffer.from(blob),
+          metadata
+        };
+      }
     } catch (error) {
-      console.error("Error getting file from cloud storage:", error);
+      console.error("Error getting file from storage:", error);
       return null;
     }
   }
+  getMimetypeFromExtension(ext) {
+    const mimeTypes = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".pdf": "application/pdf",
+      ".txt": "text/plain",
+      ".doc": "application/msword",
+      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".xls": "application/vnd.ms-excel",
+      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    };
+    return mimeTypes[ext.toLowerCase()] || "application/octet-stream";
+  }
   /**
-   * Delete file from Netlify Blobs
+   * Delete file from storage
    */
   async deleteFile(key) {
     try {
-      await this.store.delete(key);
-      return true;
+      if (this.useLocalStorage) {
+        const filePath = path.join(this.localStoragePath, key);
+        if (existsSync(filePath)) {
+          await fs.unlink(filePath);
+        }
+        return true;
+      } else {
+        await this.store.delete(key);
+        return true;
+      }
     } catch (error) {
-      console.error("Error deleting file from cloud storage:", error);
+      console.error("Error deleting file from storage:", error);
       return false;
     }
   }
@@ -2319,12 +2393,19 @@ var CloudStorageService = class {
    */
   async listFiles(folder) {
     try {
-      const { blobs } = await this.store.list({
-        prefix: folder ? `${folder}/` : void 0
-      });
-      return blobs.map((blob) => blob.key);
+      if (this.useLocalStorage) {
+        const searchPath = folder ? path.join(this.localStoragePath, folder) : this.localStoragePath;
+        if (!existsSync(searchPath)) return [];
+        const files = await fs.readdir(searchPath, { recursive: true });
+        return files.filter((file) => typeof file === "string").map((file) => folder ? `${folder}/${file}` : file);
+      } else {
+        const { blobs } = await this.store.list({
+          prefix: folder ? `${folder}/` : void 0
+        });
+        return blobs.map((blob) => blob.key);
+      }
     } catch (error) {
-      console.error("Error listing files from cloud storage:", error);
+      console.error("Error listing files from storage:", error);
       return [];
     }
   }
@@ -2333,7 +2414,11 @@ var CloudStorageService = class {
    */
   async getFileUrl(key) {
     try {
-      return await this.store.getURL(key);
+      if (this.useLocalStorage) {
+        return `/uploads/${key}`;
+      } else {
+        return await this.store.getURL(key);
+      }
     } catch (error) {
       console.error("Error getting file URL:", error);
       return null;

@@ -4,6 +4,7 @@ NETLIFY ENVIRONMENT VARIABLES
 Copy these environment variables to Netlify Dashboard:
 Site Settings > Environment Variables > Add new variable
 
+REQUIRED VARIABLES:
 1. DATABASE_URL
    Value: postgresql://neondb_owner:npg_Gk09jLHaJBgE@ep-patient-river-a92t4n5z-pooler.gwc.azure.neon.tech/neondb?sslmode=require
 
@@ -21,6 +22,15 @@ Site Settings > Environment Variables > Add new variable
 
 6. ADMIN_EMAIL
    Value: tamer2025ultimate@gmail.com
+
+OPTIONAL VARIABLES (for Netlify Blobs - requires paid plan):
+7. NETLIFY_SITE_ID
+   Value: ff08dac9-35e3-4b42-8133-f8046ae35f24
+
+8. NETLIFY_TOKEN
+   Value: [Your Netlify Personal Access Token - requires paid plan]
+
+NOTE: Cloud storage will automatically fall back to local storage if Netlify Blobs is not configured.
 
 IMPORTANT SECURITY NOTES:
 - Change JWT secrets to strong, unique values in production

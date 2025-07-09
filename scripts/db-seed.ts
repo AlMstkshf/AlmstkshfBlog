@@ -282,6 +282,274 @@ Investment in AI-powered media intelligence is not merely technological upgradin
     readingTime: 15,
     publishedAt: new Date("2024-01-10T14:00:00Z"),
     featuredImage: "/images/articles/ai-assistant-revolution.jpg"
+  },
+  {
+    slug: "from-monitoring-to-vision-leading-instead-reacting",
+    titleEn: "From Monitoring to Vision — Leading Instead of Reacting",
+    titleAr: "من المراقبة إلى الرؤية — القيادة بدلاً من التفاعل",
+    excerptEn: "One tweet. A blurry video. A hashtag from nowhere. These are not anomalies — they are how modern storms begin. The question isn't: Are you listening? It's: Do you see the storm coming?",
+    excerptAr: "تغريدة واحدة. فيديو ضبابي. هاشتاغ من العدم. هذه ليست شذوذاً — هكذا تبدأ العواصف الحديثة. السؤال ليس: هل تستمع؟ بل: هل ترى العاصفة قادمة؟",
+    contentEn: `# From Monitoring to Vision — Leading Instead of Reacting
+
+## One tweet. A blurry video. A hashtag from nowhere.
+
+These are not anomalies — they are how modern storms begin. What was once random noise can now spiral into full-blown narratives in hours. The question isn't: Are you listening? It's: Do you see the storm coming?
+
+## Monitoring Alone is a Mirage
+
+Traditional monitoring gives you data, not destiny. It's useful, yes — but it's reactive, late, and often overwhelmed. Knowing what was said doesn't prepare you for what's about to be believed.
+
+## From Tracking to Shaping: The Real Transformation
+
+### 1. Snapshots vs Storylines
+
+A single post means little. But connect a trending joke in Cairo, with a sarcastic TikTok from Riyadh, and a protest thread from Amman — and suddenly, you're not monitoring anymore. You're decoding.
+
+### 2. What vs Why Now?
+
+Strategic foresight doesn't just ask: "What's being said?" It asks: "Why this? Why now? Why these people?" Timing is narrative. And narratives shift power.
+
+### 3. Respond vs Preempt
+
+The smartest organizations don't wait to respond — they build communication firewalls before the sparks ignite. They simulate crises. They write replies they may never use. They prepare like pilots scanning weather radars.
+
+## Case Study: A Storm in Slow Motion
+
+In Spring 2023, a quiet hashtag about public service complaints emerged. It wasn't viral. It was subtle. But insight teams noticed:
+
+- Repetitive phrases reworded.
+- Night-time publishing spikes.
+- Recently activated accounts fueling the trend.
+
+**Outcome?** Strategic counter-narratives were launched early. Crisis defused. Audience redirected.
+
+## Vision is Not Optional — It's Leadership
+
+Media vision combines data science, narrative theory, and cultural instinct. It is what separates institutions that react, from those that frame the future.
+
+### How to Build It
+
+- Train minds, not just dashboards.
+- Integrate media analysis into top-level decision making.
+- Move from "logging content" to decoding meaning.
+
+## Final Thought:
+
+In the attention economy, speed kills — but insight empowers. Without vision, institutions become record-keepers of stories written by others. With it, they become authors of their own destiny.`,
+    contentAr: `# من المراقبة إلى الرؤية — القيادة بدلاً من التفاعل
+
+## تغريدة واحدة. فيديو ضبابي. هاشتاغ من العدم.
+
+هذه ليست شذوذاً — هكذا تبدأ العواصف الحديثة. ما كان في السابق ضوضاء عشوائية يمكن أن يتحول الآن إلى سرديات كاملة في ساعات. السؤال ليس: هل تستمع؟ بل: هل ترى العاصفة قادمة؟
+
+## المراقبة وحدها سراب
+
+المراقبة التقليدية تعطيك البيانات، وليس المصير. إنها مفيدة، نعم — لكنها تفاعلية ومتأخرة وغالباً ما تكون مرهقة. معرفة ما قيل لا تعدك لما سيُصدق.
+
+## من التتبع إلى التشكيل: التحول الحقيقي
+
+### 1. اللقطات مقابل القصص
+
+منشور واحد لا يعني الكثير. لكن اربط نكتة رائجة في القاهرة، مع تيك توك ساخر من الرياض، وخيط احتجاج من عمان — وفجأة، لم تعد تراقب بعد الآن. أنت تفك الرموز.
+
+## الرؤية ليست اختيارية — إنها قيادة
+
+الرؤية الإعلامية تجمع بين علم البيانات ونظرية السرد والغريزة الثقافية. إنها ما يفصل بين المؤسسات التي تتفاعل، وتلك التي تشكل المستقبل.
+
+## الفكرة الأخيرة:
+
+في اقتصاد الانتباه، السرعة تقتل — لكن البصيرة تمكن. بدون رؤية، تصبح المؤسسات حفظة سجلات للقصص التي كتبها آخرون. معها، يصبحون مؤلفي مصيرهم.`,
+    metaDescriptionEn: "Transform from reactive monitoring to proactive vision. Learn how to lead narratives instead of following them in the digital age.",
+    metaDescriptionAr: "تحول من المراقبة التفاعلية إلى الرؤية الاستباقية. تعلم كيفية قيادة السرديات بدلاً من اتباعها في العصر الرقمي.",
+    authorName: "Al-Mustakshef Team",
+    authorImage: "/images/authors/almustakshef-team.jpg",
+    published: true,
+    featured: false,
+    readingTime: 8,
+    publishedAt: new Date("2024-01-20T09:00:00Z"),
+    featuredImage: "/images/articles/monitoring-to-vision.jpg"
+  },
+  {
+    slug: "traditional-monitoring-strategic-foresight-observation",
+    titleEn: "From Traditional Monitoring to Strategic Foresight — What Comes After Observation?",
+    titleAr: "من المراقبة التقليدية إلى البصيرة الاستراتيجية — ماذا يأتي بعد الملاحظة؟",
+    excerptEn: "In the old newsroom, media monitoring meant scanning, cutting, archiving. But in today's hyper-digital world — where narratives shift hourly — monitoring is merely the start.",
+    excerptAr: "في غرفة الأخبار القديمة، كانت مراقبة الإعلام تعني المسح والقطع والأرشفة. لكن في عالم اليوم الرقمي المفرط — حيث تتغير السرديات كل ساعة — المراقبة مجرد البداية.",
+    contentEn: `# From Traditional Monitoring to Strategic Foresight — What Comes After Observation?
+
+## The Evolution Beyond Observation
+
+In the old newsroom, media monitoring meant scanning, cutting, archiving. It was about counting columns, tracking TV appearances, and filing reports. But in today's hyper-digital world — where narratives shift hourly and platforms never sleep — monitoring is merely the start. The real question is: What comes next?
+
+## Observation is Not Insight
+
+Traditional monitoring tells you what was said. Foresight asks why, by whom, when, and what next. It shifts from snapshots to storyline.
+
+## From Surfing Waves to Reading Currents
+
+- **Monitoring** captures the post; **foresight** deciphers the pattern.
+- **Monitoring** counts the noise; **foresight** detects the turning point.
+
+### Tools of Foresight:
+
+**Narrative Timelines**: Which themes are accelerating? What's fading?
+
+**Hashtag Intelligence**: Don't chase what's trending — predict what will.
+
+**Early Warning Signals**: Shift in language tone, unusual engagement spikes, new influencers entering a topic.
+
+**Behavioral Modeling**: Is the public asking questions, or beginning to mobilize?
+
+## Real Scenario: The Egg Price Crisis
+
+In April 2023, Gulf users posted memes mocking rising egg prices. Basic monitoring logged the jokes. But foresight teams:
+
+- Detected a tone shift — from humor to anger within 48 hours.
+- Mapped private Facebook groups discussing deeper economic fears.
+- Advised preemptive communication to explain supply chain issues before boycott calls emerged.
+
+## Institutional Shift Required:
+
+- From reacting after the tweet to preparing before the surge.
+- From content analysis to context mastery.
+- From tracking media to building real-time insight units.
+
+## Foresight = Strategic Weapon
+
+Don't wait for the trend to hit you. Learn to spot faint signals: recurring phrases, new player clusters, sentiment spikes.
+
+## Conclusion:
+
+Winning institutions don't just watch. They read. They understand media not as noise, but as predictive code. The difference between reacting to crises and turning them into opportunities? One hour of smart analysis.`,
+    contentAr: `# من المراقبة التقليدية إلى البصيرة الاستراتيجية — ماذا يأتي بعد الملاحظة؟
+
+## التطور ما وراء الملاحظة
+
+في غرفة الأخبار القديمة، كانت مراقبة الإعلام تعني المسح والقطع والأرشفة. كان الأمر يتعلق بعد الأعمدة وتتبع ظهور التلفزيون وتقديم التقارير. لكن في عالم اليوم الرقمي المفرط — حيث تتغير السرديات كل ساعة ولا تنام المنصات أبداً — المراقبة مجرد البداية. السؤال الحقيقي هو: ماذا يأتي بعد ذلك؟
+
+## الملاحظة ليست بصيرة
+
+المراقبة التقليدية تخبرك بما قيل. البصيرة تسأل لماذا، من قبل من، متى، وماذا بعد ذلك. إنها تنتقل من اللقطات إلى القصة.
+
+## من ركوب الأمواج إلى قراءة التيارات
+
+- **المراقبة** تلتقط المنشور؛ **البصيرة** تفك النمط.
+- **المراقبة** تعد الضوضاء؛ **البصيرة** تكتشف نقطة التحول.
+
+## البصيرة = سلاح استراتيجي
+
+لا تنتظر حتى يضربك الاتجاه. تعلم كيفية اكتشاف الإشارات الخافتة: العبارات المتكررة، مجموعات اللاعبين الجدد، ارتفاع المشاعر.
+
+## الخلاصة:
+
+المؤسسات الفائزة لا تراقب فقط. إنها تقرأ. تفهم الإعلام ليس كضوضاء، بل كرمز تنبؤي. الفرق بين التفاعل مع الأزمات وتحويلها إلى فرص؟ ساعة واحدة من التحليل الذكي.`,
+    metaDescriptionEn: "Move beyond traditional media monitoring to strategic foresight. Learn to predict trends and shape narratives before they emerge.",
+    metaDescriptionAr: "تجاوز مراقبة الإعلام التقليدية إلى البصيرة الاستراتيجية. تعلم التنبؤ بالاتجاهات وتشكيل السرديات قبل ظهورها.",
+    authorName: "Al-Mustakshef Team",
+    authorImage: "/images/authors/almustakshef-team.jpg",
+    published: true,
+    featured: false,
+    readingTime: 7,
+    publishedAt: new Date("2024-01-25T11:00:00Z"),
+    featuredImage: "/images/articles/strategic-foresight.jpg"
+  },
+  {
+    slug: "artificial-intelligence-existential-threat-fears-opportunities",
+    titleEn: "Is Artificial Intelligence an Existential Threat? Between Fears and Opportunities",
+    titleAr: "هل الذكاء الاصطناعي تهديد وجودي؟ بين المخاوف والفرص",
+    excerptEn: "Artificial Intelligence is no longer a future promise but a present reality. Its power to transform societies is immense, but so is the concern that it might one day surpass human control.",
+    excerptAr: "لم يعد الذكاء الاصطناعي وعداً مستقبلياً بل واقعاً حاضراً. قوته في تحويل المجتمعات هائلة، لكن كذلك القلق من أنه قد يتجاوز السيطرة البشرية يوماً ما.",
+    contentEn: `# Is Artificial Intelligence an Existential Threat? Between Fears and Opportunities
+
+## Executive Summary
+
+Artificial Intelligence (AI) is no longer a future promise but a present reality. Its power to transform societies is immense, but so is the concern that it might one day surpass human control. This report investigates the existential risks associated with AI, the root causes of those fears, and the governance frameworks that can ensure AI remains a tool for progress rather than destruction.
+
+## 1. The Core Fear: Superintelligence Run Amok
+
+**Concern**: AI systems may evolve into superintelligent entities beyond human control, making autonomous decisions detrimental to humanity.
+
+**Who shares it**: Notable figures like Stephen Hawking, Elon Musk, and Nick Bostrom have warned against this possibility.
+
+**Root Issue**: The lack of alignment between machine objectives and human values.
+
+## 2. Current Risk Vectors
+
+**Autonomous Weapons**: AI used in military drones and cyberwarfare raises ethical and strategic alarms.
+
+**Misinformation & Deepfakes**: AI's ability to create convincing fake content threatens democracy and public trust.
+
+**Job Displacement**: Millions of roles, especially repetitive or data-based, are at risk of automation.
+
+**Surveillance States**: AI-powered mass surveillance could erode privacy and civil liberties.
+
+## 3. Why "End of the World" Is Not Inevitable
+
+**AI Lacks Consciousness**: Current models, including GPTs, do not possess will, emotion, or desire.
+
+**Human Oversight**: AI systems can be shut down or reprogrammed. Their autonomy is limited.
+
+**Regulatory Readiness**: Global institutions are already moving toward AI ethics standards (e.g., UNESCO AI Ethics Framework).
+
+## 4. Building Ethical AI: What Can Be Done
+
+**Governance**: Establish international treaties on AI use in warfare, surveillance, and misinformation.
+
+**Transparency**: Ensure that AI systems, especially in public use, are explainable and auditable.
+
+**Inclusion**: Diverse voices must shape AI development to reflect global human values.
+
+**Education**: Equip the next generation with AI literacy to prevent misuse and maximize benefits.
+
+## 5. Case Study: How Al-Mustakshef Applies Ethical AI
+
+**No manipulation**: Al-Mustakshef does not alter or skew public sentiment artificially.
+
+**Data privacy**: All analysis complies with strict data protection rules.
+
+**Crisis response**: AI is used to assist decision-makers, not replace them, particularly in sensitive government and security contexts.
+
+## Conclusion
+
+AI holds transformative promise, but only if managed wisely. With robust frameworks, international cooperation, and ethical implementation, AI can remain humanity's tool, not its master. The end of the world is not coded into AI's future – unless we program it that way.`,
+    contentAr: `# هل الذكاء الاصطناعي تهديد وجودي؟ بين المخاوف والفرص
+
+## الملخص التنفيذي
+
+لم يعد الذكاء الاصطناعي وعداً مستقبلياً بل واقعاً حاضراً. قوته في تحويل المجتمعات هائلة، لكن كذلك القلق من أنه قد يتجاوز السيطرة البشرية يوماً ما. يحقق هذا التقرير في المخاطر الوجودية المرتبطة بالذكاء الاصطناعي، والأسباب الجذرية لتلك المخاوف، وأطر الحوكمة التي يمكن أن تضمن بقاء الذكاء الاصطناعي أداة للتقدم وليس للدمار.
+
+## 1. الخوف الأساسي: الذكاء الفائق الخارج عن السيطرة
+
+**القلق**: قد تتطور أنظمة الذكاء الاصطناعي إلى كيانات فائقة الذكاء خارجة عن السيطرة البشرية، تتخذ قرارات مستقلة ضارة بالبشرية.
+
+**من يشاركه**: شخصيات بارزة مثل ستيفن هوكينغ وإيلون ماسك ونيك بوستروم حذروا من هذا الاحتمال.
+
+**القضية الجذرية**: عدم التوافق بين أهداف الآلة والقيم البشرية.
+
+## 2. ناقلات المخاطر الحالية
+
+**الأسلحة المستقلة**: استخدام الذكاء الاصطناعي في الطائرات المسيرة العسكرية والحرب السيبرانية يثير إنذارات أخلاقية واستراتيجية.
+
+**المعلومات المضللة والتزييف العميق**: قدرة الذكاء الاصطناعي على إنشاء محتوى مزيف مقنع تهدد الديمقراطية والثقة العامة.
+
+## 3. لماذا "نهاية العالم" ليست حتمية
+
+**الذكاء الاصطناعي يفتقر للوعي**: النماذج الحالية، بما في ذلك GPTs، لا تمتلك إرادة أو عاطفة أو رغبة.
+
+**الإشراف البشري**: يمكن إيقاف أنظمة الذكاء الاصطناعي أو إعادة برمجتها. استقلاليتها محدودة.
+
+## الخلاصة
+
+يحمل الذكاء الاصطناعي وعداً تحويلياً، لكن فقط إذا أُدير بحكمة. مع الأطر القوية والتعاون الدولي والتنفيذ الأخلاقي، يمكن للذكاء الاصطناعي أن يبقى أداة البشرية، وليس سيدها. نهاية العالم ليست مبرمجة في مستقبل الذكاء الاصطناعي – إلا إذا برمجناها بهذه الطريقة.`,
+    metaDescriptionEn: "Explore the existential risks and opportunities of AI. A comprehensive analysis of fears, realities, and ethical frameworks for artificial intelligence.",
+    metaDescriptionAr: "استكشف المخاطر الوجودية والفرص للذكاء الاصطناعي. تحليل شامل للمخاوف والحقائق والأطر الأخلاقية للذكاء الاصطناعي.",
+    authorName: "Al-Mustakshef Team",
+    authorImage: "/images/authors/almustakshef-team.jpg",
+    published: true,
+    featured: true,
+    readingTime: 10,
+    publishedAt: new Date("2024-01-30T13:00:00Z"),
+    featuredImage: "/images/articles/ai-existential-threat.jpg"
   }
 ];
 
@@ -356,12 +624,8 @@ class DatabaseSeeder {
 
       // Check existing articles
       const existingArticles = await db.select().from(articles);
+      const existingSlugs = new Set(existingArticles.map(a => a.slug));
       
-      if (existingArticles.length > 0 && !force) {
-        this.log(`Found ${existingArticles.length} existing articles, skipping`);
-        return true;
-      }
-
       if (force && existingArticles.length > 0) {
         this.log("Force mode: clearing existing articles");
         await db.delete(articles);
@@ -370,17 +634,39 @@ class DatabaseSeeder {
       // Assign categories to articles
       const mediaMonitoringCategory = allCategories.find(c => c.slug === "media-monitoring");
       const aiIntelligenceCategory = allCategories.find(c => c.slug === "ai-intelligence");
+      const crisisCommunicationCategory = allCategories.find(c => c.slug === "crisis-communication");
+      const digitalTransformationCategory = allCategories.find(c => c.slug === "digital-transformation");
 
-      const articlesToInsert: ArticleInsert[] = [
-        {
-          ...INITIAL_ARTICLES[0],
-          categoryId: mediaMonitoringCategory?.id || allCategories[0].id
-        },
-        {
-          ...INITIAL_ARTICLES[1],
-          categoryId: aiIntelligenceCategory?.id || allCategories[1].id
+      // Filter articles to insert (skip existing ones unless force mode)
+      const articlesToProcess = force ? INITIAL_ARTICLES : 
+        INITIAL_ARTICLES.filter(article => !existingSlugs.has(article.slug));
+
+      if (articlesToProcess.length === 0) {
+        this.log(`All ${INITIAL_ARTICLES.length} articles already exist, skipping`);
+        return true;
+      }
+
+      // Map articles to appropriate categories
+      const articlesToInsert: ArticleInsert[] = articlesToProcess.map((article, index) => {
+        let categoryId: number;
+        
+        // Assign categories based on article content/slug
+        if (article.slug.includes("media-monitoring") || article.slug.includes("defense-rumors")) {
+          categoryId = mediaMonitoringCategory?.id || allCategories[0].id;
+        } else if (article.slug.includes("ai-assistant") || article.slug.includes("artificial-intelligence")) {
+          categoryId = aiIntelligenceCategory?.id || allCategories[1].id;
+        } else if (article.slug.includes("monitoring-to-vision") || article.slug.includes("strategic-foresight")) {
+          categoryId = crisisCommunicationCategory?.id || allCategories[2].id;
+        } else {
+          // Default fallback - cycle through categories
+          categoryId = allCategories[index % allCategories.length].id;
         }
-      ];
+
+        return {
+          ...article,
+          categoryId
+        };
+      });
 
       // Insert articles
       const insertedArticles = await db
@@ -388,10 +674,25 @@ class DatabaseSeeder {
         .values(articlesToInsert)
         .returning();
 
-      this.success(`Seeded ${insertedArticles.length} articles`);
+      this.success(`Seeded ${insertedArticles.length} new articles (${existingArticles.length} already existed)`);
       return true;
     } catch (error) {
       this.error(`Failed to seed articles: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Test database connection
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      this.log("Testing database connection...");
+      const testResult = await db.select().from(categories).limit(1);
+      this.log("Database connection successful");
+      return true;
+    } catch (error) {
+      this.error(`Database connection failed: ${error.message}`);
       return false;
     }
   }
@@ -402,10 +703,16 @@ class DatabaseSeeder {
   async seed(options: SeedOptions = {}): Promise<boolean> {
     this.log("Starting database seeding...");
 
+    // Test connection first
+    if (!(await this.testConnection())) {
+      return false;
+    }
+
     const { force = false, categoriesOnly = false, articlesOnly = false } = options;
 
     // Seed categories (unless articles-only)
     if (!articlesOnly) {
+      this.log("Processing categories...");
       if (!(await this.seedCategories(force))) {
         return false;
       }
@@ -413,6 +720,7 @@ class DatabaseSeeder {
 
     // Seed articles (unless categories-only)
     if (!categoriesOnly) {
+      this.log("Processing articles...");
       if (!(await this.seedArticles(force))) {
         return false;
       }
@@ -431,16 +739,17 @@ export async function seedDatabase(options: SeedOptions = {}): Promise<boolean> 
 
 // CLI interface
 async function main() {
-  const args = process.argv.slice(2);
-  const options: SeedOptions = {
-    force: args.includes("--force"),
-    verbose: args.includes("--verbose") || args.includes("-v"),
-    categoriesOnly: args.includes("--categories-only"),
-    articlesOnly: args.includes("--articles-only")
-  };
+  try {
+    const args = process.argv.slice(2);
+    const options: SeedOptions = {
+      force: args.includes("--force"),
+      verbose: args.includes("--verbose") || args.includes("-v"),
+      categoriesOnly: args.includes("--categories-only"),
+      articlesOnly: args.includes("--articles-only")
+    };
 
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log(`
+    if (args.includes("--help") || args.includes("-h")) {
+      console.log(`
 Database Seeding Tool for AlmstkshfBlog
 
 Usage: tsx scripts/db-seed.ts [options]
@@ -460,17 +769,29 @@ Examples:
   tsx scripts/db-seed.ts --categories-only  # Seed only categories
   tsx scripts/db-seed.ts --articles-only -v # Seed only articles with verbose output
 `);
-    process.exit(0);
-  }
+      process.exit(0);
+    }
 
-  const success = await seedDatabase(options);
-  process.exit(success ? 0 : 1);
+    console.log("Starting database seeding process...");
+    const success = await seedDatabase(options);
+    
+    if (success) {
+      console.log("✅ Database seeding completed successfully!");
+      process.exit(0);
+    } else {
+      console.error("❌ Database seeding failed!");
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error("❌ Fatal error during seeding:", error);
+    process.exit(1);
+  }
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1]?.includes('db-seed.ts')) {
   main().catch((error) => {
-    console.error("Seeding failed:", error);
+    console.error("❌ Seeding failed:", error);
     process.exit(1);
   });
 }

@@ -14,7 +14,7 @@ dotenv.config();
 
 import { db } from "../server/db";
 import { categories, articles } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { execSync } from "child_process";
 
 interface MigrationOptions {
@@ -89,11 +89,11 @@ class DatabaseMigrator {
   async checkExistingData(): Promise<{ categories: number; articles: number }> {
     try {
       const [categoryCount] = await db
-        .select({ count: db.$count(categories) })
+        .select({ count: count() })
         .from(categories);
       
       const [articleCount] = await db
-        .select({ count: db.$count(articles) })
+        .select({ count: count() })
         .from(articles);
 
       return {
