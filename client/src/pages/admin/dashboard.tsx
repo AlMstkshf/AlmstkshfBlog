@@ -108,12 +108,20 @@ function AdminDashboardContent() {
     refetch: refetchArticles 
   } = useQuery<ArticleWithCategory[]>({
     queryKey: ["/api/articles"],
-    queryFn: async () => {
+    queryFn: async (): Promise<ArticleWithCategory[]> => {
       const response = await fetch("/api/articles?limit=1000");
       if (!response.ok) {
         throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Type guard to ensure we have an array
+      if (!Array.isArray(data)) {
+        console.error("API returned non-array data:", data);
+        throw new Error("API returned invalid data format");
+      }
+      
+      return data;
     },
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -157,20 +165,20 @@ function AdminDashboardContent() {
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Memoized computed values for better performance
-  const publishedArticles = useMemo(() => 
-    articles?.filter(a => a.published) || [], 
-    [articles]
-  );
+  // Memoized computed values for better performance with type guards
+  const publishedArticles = useMemo(() => {
+    if (!articles || !Array.isArray(articles)) return [];
+    return articles.filter(a => a.published);
+  }, [articles]);
   
-  const draftArticles = useMemo(() => 
-    articles?.filter(a => !a.published) || [], 
-    [articles]
-  );
+  const draftArticles = useMemo(() => {
+    if (!articles || !Array.isArray(articles)) return [];
+    return articles.filter(a => !a.published);
+  }, [articles]);
 
   // Memoized filtered articles with debounced search
   const filteredArticles = useMemo(() => {
-    if (!articles) return [];
+    if (!articles || !Array.isArray(articles)) return [];
     if (!debouncedSearchQuery.trim()) return articles;
     
     const query = debouncedSearchQuery.toLowerCase();

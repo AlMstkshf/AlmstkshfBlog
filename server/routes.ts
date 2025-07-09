@@ -227,10 +227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cursor,
         language = "en",
         sortBy = "publishedAt",
-        sortOrder = "desc"
+        sortOrder = "desc",
+        paginated // New parameter to explicitly request paginated response
       } = req.query;
 
-      const parsedLimit = Math.min(parseInt(limit as string), 100); // Max 100 items per request
+      const parsedLimit = Math.min(parseInt(limit as string), 1000); // Increased max for backward compatibility
       const parsedOffset = parseInt(offset as string);
 
       const options = {
@@ -245,30 +246,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortOrder: sortOrder as 'asc' | 'desc'
       };
 
-      const result = await storage.getArticlesWithPagination(options);
-      
-      // Add pagination metadata
-      const response = {
-        data: result.articles,
-        pagination: {
-          total: result.total,
-          limit: parsedLimit,
-          offset: parsedOffset,
-          hasNext: result.hasNext,
-          hasPrev: parsedOffset > 0,
-          nextCursor: result.nextCursor,
-          totalPages: Math.ceil(result.total / parsedLimit),
-          currentPage: Math.floor(parsedOffset / parsedLimit) + 1
-        }
-      };
+      // Check if pagination is explicitly requested or if using cursor/offset
+      const shouldReturnPaginated = paginated === "true" || cursor || parsedOffset > 0;
 
-      // Add cache headers for better performance
-      res.set({
-        'Cache-Control': 'public, max-age=300', // 5 minutes cache
-        'ETag': `"articles-${JSON.stringify(options).replace(/[^a-zA-Z0-9]/g, '')}-${result.total}"`
-      });
+      if (shouldReturnPaginated) {
+        // Return paginated response for explicit pagination requests
+        const result = await storage.getArticlesWithPagination(options);
+        
+        const response = {
+          data: result.articles,
+          pagination: {
+            total: result.total,
+            limit: parsedLimit,
+            offset: parsedOffset,
+            hasNext: result.hasNext,
+            hasPrev: parsedOffset > 0,
+            nextCursor: result.nextCursor,
+            totalPages: Math.ceil(result.total / parsedLimit),
+            currentPage: Math.floor(parsedOffset / parsedLimit) + 1
+          }
+        };
 
-      res.json(response);
+        // Add cache headers for better performance
+        res.set({
+          'Cache-Control': 'public, max-age=300', // 5 minutes cache
+          'ETag': `"articles-paginated-${JSON.stringify(options).replace(/[^a-zA-Z0-9]/g, '')}-${result.total}"`
+        });
+
+        res.json(response);
+      } else {
+        // Return direct array for backward compatibility
+        const articles = await storage.getArticles(options);
+
+        // Add cache headers for better performance
+        res.set({
+          'Cache-Control': 'public, max-age=300', // 5 minutes cache
+          'ETag': `"articles-${JSON.stringify(options).replace(/[^a-zA-Z0-9]/g, '')}-${articles.length}"`
+        });
+
+        res.json(articles);
+      }
     } catch (error) {
       console.error("Error fetching articles:", error);
       res.status(500).json({ message: "Failed to fetch articles" });
