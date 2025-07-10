@@ -28,17 +28,39 @@ export class CloudStorageService {
     } catch (error) {
       console.log("⚠️  Netlify Blobs not available, falling back to local storage");
       this.useLocalStorage = true;
-      this.ensureLocalDirectories();
+      // Don't create directories in constructor for serverless compatibility
+      // They will be created on-demand when needed
     }
   }
 
+  private isServerlessEnvironment(): boolean {
+    return !!(
+      process.env.AWS_LAMBDA_FUNCTION_NAME || 
+      process.env.NETLIFY || 
+      process.env.NETLIFY_DEV ||
+      process.env.VERCEL ||
+      process.env.LAMBDA_TASK_ROOT
+    );
+  }
+
   private async ensureLocalDirectories() {
-    const dirs = ['images', 'documents', 'pdfs', 'files'];
-    for (const dir of dirs) {
-      const dirPath = path.join(this.localStoragePath, dir);
-      if (!existsSync(dirPath)) {
-        await fs.mkdir(dirPath, { recursive: true });
+    // Skip directory creation in serverless environments
+    if (this.isServerlessEnvironment()) {
+      console.log("⚠️  Serverless environment detected, skipping local directory creation");
+      return;
+    }
+    
+    try {
+      const dirs = ['images', 'documents', 'pdfs', 'files'];
+      for (const dir of dirs) {
+        const dirPath = path.join(this.localStoragePath, dir);
+        if (!existsSync(dirPath)) {
+          await fs.mkdir(dirPath, { recursive: true });
+        }
       }
+    } catch (error) {
+      console.warn("⚠️  Could not create local directories (serverless environment?):", error.message);
+      // Don't throw error, just log warning
     }
   }
 
@@ -72,6 +94,14 @@ export class CloudStorageService {
       
       if (this.useLocalStorage) {
         // Local storage implementation
+        // In serverless environments, skip directory creation and file writing
+        if (this.isServerlessEnvironment()) {
+          console.log("⚠️  Serverless environment: Cannot write to local storage, falling back to memory");
+          // In serverless, we can't write files, so we'll return a temporary URL
+          // This should ideally not happen if Netlify Blobs is properly configured
+          throw new Error("Local storage not available in serverless environment. Please configure Netlify Blobs.");
+        }
+        
         await this.ensureLocalDirectories();
         const filePath = path.join(this.localStoragePath, key);
         await fs.writeFile(filePath, buffer);

@@ -1,0 +1,111 @@
+# Page snapshot
+
+```yaml
+- region "Notifications (F8)":
+  - list
+- button "Back to Dashboard":
+  - img
+  - text: Back to Dashboard
+- heading "Edit Article" [level=1]
+- paragraph: Update your article content and settings
+- button "Preview":
+  - img
+  - text: Preview
+- button "Save Article":
+  - img
+  - text: Save Article
+- img
+- text: Content Language
+- button "English"
+- button "العربية"
+- text: English Content Title (English)
+- button "AI Generate":
+  - img
+  - text: AI Generate
+- textbox "Title (English)"
+- text: Excerpt (English)
+- button "AI Generate" [disabled]:
+  - img
+  - text: AI Generate
+- textbox "Excerpt (English)"
+- text: Content (English)
+- button "AI Generate" [disabled]:
+  - img
+  - text: AI Generate
+- button "Bold":
+  - img
+- button "Italic":
+  - img
+- button "Underline":
+  - img
+- button "Heading 1":
+  - img
+- button "Heading 2":
+  - img
+- button "Heading 3":
+  - img
+- button "Align Left":
+  - img
+- button "Center":
+  - img
+- button "Align Right":
+  - img
+- button "Bullet List":
+  - img
+- button "Numbered List":
+  - img
+- button "Insert Link":
+  - img
+- button "Image Manager":
+  - img
+- button "Quote":
+  - img
+- button "Code":
+  - img
+- button "Undo":
+  - img
+- button "Redo":
+  - img
+- button "Preview":
+  - img
+  - text: Preview
+- text: SEO & Meta Tags Meta Title
+- textbox "Meta Title"
+- text: Meta Description
+- textbox "Meta Description"
+- text: Keywords
+- textbox "Keywords"
+- text: Canonical URL
+- textbox "Canonical URL"
+- img
+- text: Publish Published
+- switch "Published"
+- text: Featured
+- switch "Featured"
+- text: Publish Date
+- textbox "Publish Date"
+- img
+- text: Details Author
+- textbox "Author"
+- text: Author Image URL
+- textbox "Author Image URL"
+- text: URL Slug
+- textbox "URL Slug"
+- img
+- text: Reading Time (minutes)
+- spinbutton "Reading Time (minutes)": "0"
+- text: Category
+- combobox: Select category
+- img
+- text: Featured Image Image URL
+- textbox "Image URL"
+- text: Upload Image
+- button "Upload Image"
+- text: Quick Actions
+- button "Set Publish Date to Now":
+  - img
+  - text: Set Publish Date to Now
+- button "Generate Slug from Title":
+  - img
+  - text: Generate Slug from Title
+```

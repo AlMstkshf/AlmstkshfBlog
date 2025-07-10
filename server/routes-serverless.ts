@@ -19,7 +19,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
-import { cloudStorage } from "./cloud-storage";
+// Lazy import cloud storage to avoid initialization issues in serverless
+// import { cloudStorage } from "./cloud-storage";
 import { 
   authenticateAdmin, 
   generateTokens, 
@@ -397,6 +398,8 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
+      // Lazy import to avoid initialization issues in serverless
+      const { cloudStorage } = await import("./cloud-storage");
       const uploadedFile = await cloudStorage.uploadFile(
         req.file.buffer,
         req.file.originalname,
@@ -428,6 +431,8 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       const { folder, filename } = req.params;
       const key = `${folder}/${filename}`;
       
+      // Lazy import to avoid initialization issues in serverless
+      const { cloudStorage } = await import("./cloud-storage");
       const fileData = await cloudStorage.getFile(key);
       if (!fileData) {
         return res.status(404).json({ error: "File not found" });
@@ -466,6 +471,8 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       const { folder, filename } = req.params;
       const key = `${folder}/${filename}`;
       
+      // Lazy import to avoid initialization issues in serverless
+      const { cloudStorage } = await import("./cloud-storage");
       const deleted = await cloudStorage.deleteFile(key);
       if (!deleted) {
         return res.status(404).json({ error: "File not found or failed to delete" });

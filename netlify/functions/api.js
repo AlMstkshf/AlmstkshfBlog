@@ -25282,6 +25282,223 @@ var require_multer = __commonJS({
   }
 });
 
+// server/cloud-storage.ts
+var cloud_storage_exports = {};
+__export(cloud_storage_exports, {
+  CloudStorageService: () => CloudStorageService,
+  cloudStorage: () => cloudStorage
+});
+import { getStore } from "@netlify/blobs";
+import crypto from "crypto";
+import path from "path";
+import fs from "fs/promises";
+import { existsSync } from "fs";
+var CloudStorageService, cloudStorage;
+var init_cloud_storage = __esm({
+  "server/cloud-storage.ts"() {
+    "use strict";
+    CloudStorageService = class {
+      store = null;
+      useLocalStorage = false;
+      localStoragePath;
+      constructor() {
+        this.localStoragePath = path.join(process.cwd(), "uploads");
+        try {
+          this.store = getStore("uploads");
+          console.log("\u2705 Netlify Blobs initialized successfully");
+        } catch (error) {
+          console.log("\u26A0\uFE0F  Netlify Blobs not available, falling back to local storage");
+          this.useLocalStorage = true;
+        }
+      }
+      isServerlessEnvironment() {
+        return !!(process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY || process.env.NETLIFY_DEV || process.env.VERCEL || process.env.LAMBDA_TASK_ROOT);
+      }
+      async ensureLocalDirectories() {
+        if (this.isServerlessEnvironment()) {
+          console.log("\u26A0\uFE0F  Serverless environment detected, skipping local directory creation");
+          return;
+        }
+        try {
+          const dirs = ["images", "documents", "pdfs", "files"];
+          for (const dir of dirs) {
+            const dirPath = path.join(this.localStoragePath, dir);
+            if (!existsSync(dirPath)) {
+              await fs.mkdir(dirPath, { recursive: true });
+            }
+          }
+        } catch (error) {
+          console.warn("\u26A0\uFE0F  Could not create local directories (serverless environment?):", error.message);
+        }
+      }
+      /**
+       * Upload a file to cloud storage (Netlify Blobs) or local storage
+       */
+      async uploadFile(buffer, originalName, mimetype) {
+        try {
+          const ext = path.extname(originalName);
+          const name = path.basename(originalName, ext);
+          const timestamp2 = Date.now();
+          const hash = crypto.randomBytes(8).toString("hex");
+          const filename = `${name}-${timestamp2}-${hash}${ext}`;
+          let folder = "files";
+          if (mimetype.startsWith("image/")) {
+            folder = "images";
+          } else if (mimetype === "application/pdf") {
+            folder = "pdfs";
+          } else if (mimetype.includes("document") || mimetype.includes("text")) {
+            folder = "documents";
+          }
+          const key = `${folder}/${filename}`;
+          if (this.useLocalStorage) {
+            if (this.isServerlessEnvironment()) {
+              console.log("\u26A0\uFE0F  Serverless environment: Cannot write to local storage, falling back to memory");
+              throw new Error("Local storage not available in serverless environment. Please configure Netlify Blobs.");
+            }
+            await this.ensureLocalDirectories();
+            const filePath = path.join(this.localStoragePath, key);
+            await fs.writeFile(filePath, buffer);
+            return {
+              filename,
+              originalName,
+              size: buffer.length,
+              mimetype,
+              url: `/uploads/${key}`,
+              key
+            };
+          } else {
+            await this.store.set(key, buffer, {
+              metadata: {
+                originalName,
+                mimetype,
+                size: buffer.length.toString(),
+                uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
+              }
+            });
+            const url = await this.store.getURL(key);
+            return {
+              filename,
+              originalName,
+              size: buffer.length,
+              mimetype,
+              url: url || `/api/files/${key}`,
+              key
+            };
+          }
+        } catch (error) {
+          console.error("Error uploading file to storage:", error);
+          throw new Error("Failed to upload file");
+        }
+      }
+      /**
+       * Get file from storage
+       */
+      async getFile(key) {
+        try {
+          if (this.useLocalStorage) {
+            const filePath = path.join(this.localStoragePath, key);
+            if (!existsSync(filePath)) return null;
+            const buffer = await fs.readFile(filePath);
+            const stats = await fs.stat(filePath);
+            return {
+              buffer,
+              metadata: {
+                size: stats.size.toString(),
+                uploadedAt: stats.mtime.toISOString(),
+                originalName: path.basename(key),
+                mimetype: this.getMimetypeFromExtension(path.extname(key))
+              }
+            };
+          } else {
+            const blob = await this.store.get(key, { type: "arrayBuffer" });
+            if (!blob) return null;
+            const metadata = await this.store.getMetadata(key);
+            return {
+              buffer: Buffer.from(blob),
+              metadata
+            };
+          }
+        } catch (error) {
+          console.error("Error getting file from storage:", error);
+          return null;
+        }
+      }
+      getMimetypeFromExtension(ext) {
+        const mimeTypes = {
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".png": "image/png",
+          ".gif": "image/gif",
+          ".pdf": "application/pdf",
+          ".txt": "text/plain",
+          ".doc": "application/msword",
+          ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ".xls": "application/vnd.ms-excel",
+          ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        };
+        return mimeTypes[ext.toLowerCase()] || "application/octet-stream";
+      }
+      /**
+       * Delete file from storage
+       */
+      async deleteFile(key) {
+        try {
+          if (this.useLocalStorage) {
+            const filePath = path.join(this.localStoragePath, key);
+            if (existsSync(filePath)) {
+              await fs.unlink(filePath);
+            }
+            return true;
+          } else {
+            await this.store.delete(key);
+            return true;
+          }
+        } catch (error) {
+          console.error("Error deleting file from storage:", error);
+          return false;
+        }
+      }
+      /**
+       * List files in a folder
+       */
+      async listFiles(folder) {
+        try {
+          if (this.useLocalStorage) {
+            const searchPath = folder ? path.join(this.localStoragePath, folder) : this.localStoragePath;
+            if (!existsSync(searchPath)) return [];
+            const files = await fs.readdir(searchPath, { recursive: true });
+            return files.filter((file) => typeof file === "string").map((file) => folder ? `${folder}/${file}` : file);
+          } else {
+            const { blobs } = await this.store.list({
+              prefix: folder ? `${folder}/` : void 0
+            });
+            return blobs.map((blob) => blob.key);
+          }
+        } catch (error) {
+          console.error("Error listing files from storage:", error);
+          return [];
+        }
+      }
+      /**
+       * Get file URL for serving
+       */
+      async getFileUrl(key) {
+        try {
+          if (this.useLocalStorage) {
+            return `/uploads/${key}`;
+          } else {
+            return await this.store.getURL(key);
+          }
+        } catch (error) {
+          console.error("Error getting file URL:", error);
+          return null;
+        }
+      }
+    };
+    cloudStorage = new CloudStorageService();
+  }
+});
+
 // netlify/functions/api.ts
 import express from "express";
 import serverless from "serverless-http";
@@ -26823,7 +27040,7 @@ var HealthMonitor = class {
         sql`SELECT COUNT(*) as categories_count FROM categories`
       );
       const metrics = {
-        status: dbResponseTime < 100 ? "healthy" : dbResponseTime < 500 ? "degraded" : "unhealthy",
+        status: dbResponseTime < 1e3 ? "healthy" : dbResponseTime < 3e3 ? "degraded" : "unhealthy",
         database: {
           connected: !!dbTest.rows[0],
           responseTime: dbResponseTime,
@@ -27310,198 +27527,6 @@ function registerN8NRoutes(app2) {
 // server/routes-serverless.ts
 var import_multer = __toESM(require_multer(), 1);
 
-// server/cloud-storage.ts
-import { getStore } from "@netlify/blobs";
-import crypto from "crypto";
-import path from "path";
-import fs from "fs/promises";
-import { existsSync } from "fs";
-var CloudStorageService = class {
-  store = null;
-  useLocalStorage = false;
-  localStoragePath;
-  constructor() {
-    this.localStoragePath = path.join(process.cwd(), "uploads");
-    try {
-      this.store = getStore("uploads");
-      console.log("\u2705 Netlify Blobs initialized successfully");
-    } catch (error) {
-      console.log("\u26A0\uFE0F  Netlify Blobs not available, falling back to local storage");
-      this.useLocalStorage = true;
-      this.ensureLocalDirectories();
-    }
-  }
-  async ensureLocalDirectories() {
-    const dirs = ["images", "documents", "pdfs", "files"];
-    for (const dir of dirs) {
-      const dirPath = path.join(this.localStoragePath, dir);
-      if (!existsSync(dirPath)) {
-        await fs.mkdir(dirPath, { recursive: true });
-      }
-    }
-  }
-  /**
-   * Upload a file to cloud storage (Netlify Blobs) or local storage
-   */
-  async uploadFile(buffer, originalName, mimetype) {
-    try {
-      const ext = path.extname(originalName);
-      const name = path.basename(originalName, ext);
-      const timestamp2 = Date.now();
-      const hash = crypto.randomBytes(8).toString("hex");
-      const filename = `${name}-${timestamp2}-${hash}${ext}`;
-      let folder = "files";
-      if (mimetype.startsWith("image/")) {
-        folder = "images";
-      } else if (mimetype === "application/pdf") {
-        folder = "pdfs";
-      } else if (mimetype.includes("document") || mimetype.includes("text")) {
-        folder = "documents";
-      }
-      const key = `${folder}/${filename}`;
-      if (this.useLocalStorage) {
-        await this.ensureLocalDirectories();
-        const filePath = path.join(this.localStoragePath, key);
-        await fs.writeFile(filePath, buffer);
-        return {
-          filename,
-          originalName,
-          size: buffer.length,
-          mimetype,
-          url: `/uploads/${key}`,
-          key
-        };
-      } else {
-        await this.store.set(key, buffer, {
-          metadata: {
-            originalName,
-            mimetype,
-            size: buffer.length.toString(),
-            uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
-          }
-        });
-        const url = await this.store.getURL(key);
-        return {
-          filename,
-          originalName,
-          size: buffer.length,
-          mimetype,
-          url: url || `/api/files/${key}`,
-          key
-        };
-      }
-    } catch (error) {
-      console.error("Error uploading file to storage:", error);
-      throw new Error("Failed to upload file");
-    }
-  }
-  /**
-   * Get file from storage
-   */
-  async getFile(key) {
-    try {
-      if (this.useLocalStorage) {
-        const filePath = path.join(this.localStoragePath, key);
-        if (!existsSync(filePath)) return null;
-        const buffer = await fs.readFile(filePath);
-        const stats = await fs.stat(filePath);
-        return {
-          buffer,
-          metadata: {
-            size: stats.size.toString(),
-            uploadedAt: stats.mtime.toISOString(),
-            originalName: path.basename(key),
-            mimetype: this.getMimetypeFromExtension(path.extname(key))
-          }
-        };
-      } else {
-        const blob = await this.store.get(key, { type: "arrayBuffer" });
-        if (!blob) return null;
-        const metadata = await this.store.getMetadata(key);
-        return {
-          buffer: Buffer.from(blob),
-          metadata
-        };
-      }
-    } catch (error) {
-      console.error("Error getting file from storage:", error);
-      return null;
-    }
-  }
-  getMimetypeFromExtension(ext) {
-    const mimeTypes = {
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-      ".gif": "image/gif",
-      ".pdf": "application/pdf",
-      ".txt": "text/plain",
-      ".doc": "application/msword",
-      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ".xls": "application/vnd.ms-excel",
-      ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    };
-    return mimeTypes[ext.toLowerCase()] || "application/octet-stream";
-  }
-  /**
-   * Delete file from storage
-   */
-  async deleteFile(key) {
-    try {
-      if (this.useLocalStorage) {
-        const filePath = path.join(this.localStoragePath, key);
-        if (existsSync(filePath)) {
-          await fs.unlink(filePath);
-        }
-        return true;
-      } else {
-        await this.store.delete(key);
-        return true;
-      }
-    } catch (error) {
-      console.error("Error deleting file from storage:", error);
-      return false;
-    }
-  }
-  /**
-   * List files in a folder
-   */
-  async listFiles(folder) {
-    try {
-      if (this.useLocalStorage) {
-        const searchPath = folder ? path.join(this.localStoragePath, folder) : this.localStoragePath;
-        if (!existsSync(searchPath)) return [];
-        const files = await fs.readdir(searchPath, { recursive: true });
-        return files.filter((file) => typeof file === "string").map((file) => folder ? `${folder}/${file}` : file);
-      } else {
-        const { blobs } = await this.store.list({
-          prefix: folder ? `${folder}/` : void 0
-        });
-        return blobs.map((blob) => blob.key);
-      }
-    } catch (error) {
-      console.error("Error listing files from storage:", error);
-      return [];
-    }
-  }
-  /**
-   * Get file URL for serving
-   */
-  async getFileUrl(key) {
-    try {
-      if (this.useLocalStorage) {
-        return `/uploads/${key}`;
-      } else {
-        return await this.store.getURL(key);
-      }
-    } catch (error) {
-      console.error("Error getting file URL:", error);
-      return null;
-    }
-  }
-};
-var cloudStorage = new CloudStorageService();
-
 // server/auth.ts
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
@@ -27894,7 +27919,8 @@ async function registerServerlessRoutes(app2) {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
-      const uploadedFile = await cloudStorage.uploadFile(
+      const { cloudStorage: cloudStorage2 } = await Promise.resolve().then(() => (init_cloud_storage(), cloud_storage_exports));
+      const uploadedFile = await cloudStorage2.uploadFile(
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype
@@ -27919,7 +27945,8 @@ async function registerServerlessRoutes(app2) {
     try {
       const { folder, filename } = req.params;
       const key = `${folder}/${filename}`;
-      const fileData = await cloudStorage.getFile(key);
+      const { cloudStorage: cloudStorage2 } = await Promise.resolve().then(() => (init_cloud_storage(), cloud_storage_exports));
+      const fileData = await cloudStorage2.getFile(key);
       if (!fileData) {
         return res.status(404).json({ error: "File not found" });
       }
@@ -27947,7 +27974,8 @@ async function registerServerlessRoutes(app2) {
     try {
       const { folder, filename } = req.params;
       const key = `${folder}/${filename}`;
-      const deleted = await cloudStorage.deleteFile(key);
+      const { cloudStorage: cloudStorage2 } = await Promise.resolve().then(() => (init_cloud_storage(), cloud_storage_exports));
+      const deleted = await cloudStorage2.deleteFile(key);
       if (!deleted) {
         return res.status(404).json({ error: "File not found or failed to delete" });
       }
