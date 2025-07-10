@@ -18,7 +18,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5000',
+    baseURL: process.env.TEST_BASE_URL || 'https://almstkshfblog.netlify.app',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -28,6 +28,12 @@ export default defineConfig({
     
     /* Videos on failure */
     video: 'retain-on-failure',
+    
+    /* Increase timeout for production testing */
+    timeout: 30000,
+    
+    /* Wait for network idle */
+    waitForLoadState: 'networkidle',
   },
 
   /* Configure projects for major browsers */
@@ -68,8 +74,8 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
+  /* Run your local dev server before starting the tests - only for local testing */
+  webServer: process.env.TEST_BASE_URL ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:5000',
     reuseExistingServer: !process.env.CI,
