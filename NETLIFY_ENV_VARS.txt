@@ -20,14 +20,20 @@ REQUIRED VARIABLES:
 5. SITE_URL
    Value: https://almstkshfblog.netlify.app
 
-6. ADMIN_EMAIL
-   Value: tamer2025ultimate@gmail.com
+6. ADMIN_USERNAME
+   Value: admin
+
+7. ADMIN_EMAIL
+   Value: rased@almstkshf.com
+
+8. ADMIN_PASSWORD_HASH
+   Value: $2b$12$bfQRBT3BT25ARgfa.0UnCOPOE.1pKDzxoOOtpozBoxRM50T8cedne
 
 OPTIONAL VARIABLES (for Netlify Blobs - requires paid plan):
-7. NETLIFY_SITE_ID
+9. NETLIFY_SITE_ID
    Value: ff08dac9-35e3-4b42-8133-f8046ae35f24
 
-8. NETLIFY_TOKEN
+10. NETLIFY_TOKEN
    Value: [Your Netlify Personal Access Token - requires paid plan]
 
 NOTE: Cloud storage will automatically fall back to local storage if Netlify Blobs is not configured.

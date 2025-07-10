@@ -9,11 +9,13 @@ const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
 // Admin credentials (in production, store hashed password in database)
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'rased@almstkshf.com';
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; // Default: 'password'
 
 export interface AuthUser {
   id: string;
   username: string;
+  email: string;
   role: 'admin';
 }
 
@@ -80,9 +82,12 @@ export function verifyToken(token: string): JWTPayload | null {
   }
 }
 
-// Authenticate admin credentials
-export async function authenticateAdmin(username: string, password: string): Promise<AuthUser | null> {
-  if (username !== ADMIN_USERNAME) {
+// Authenticate admin credentials (supports both username and email)
+export async function authenticateAdmin(usernameOrEmail: string, password: string): Promise<AuthUser | null> {
+  // Check if login is with username or email
+  const isValidUser = usernameOrEmail === ADMIN_USERNAME || usernameOrEmail === ADMIN_EMAIL;
+  
+  if (!isValidUser) {
     return null;
   }
 
@@ -94,6 +99,7 @@ export async function authenticateAdmin(username: string, password: string): Pro
   return {
     id: 'admin-1',
     username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
     role: 'admin'
   };
 }

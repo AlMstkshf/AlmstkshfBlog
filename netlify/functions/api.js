@@ -27502,6 +27502,107 @@ var CloudStorageService = class {
 };
 var cloudStorage = new CloudStorageService();
 
+// server/auth.ts
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+var JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
+var JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
+var REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+var ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+var ADMIN_EMAIL = process.env.ADMIN_EMAIL || "rased@almstkshf.com";
+var ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
+async function verifyPassword(password, hash) {
+  return bcrypt.compare(password, hash);
+}
+function generateTokens(user) {
+  const accessTokenPayload = {
+    userId: user.id,
+    username: user.username,
+    role: user.role,
+    type: "access"
+  };
+  const refreshTokenPayload = {
+    userId: user.id,
+    username: user.username,
+    role: user.role,
+    type: "refresh"
+  };
+  const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+    issuer: "almstkshf-blog",
+    audience: "almstkshf-admin"
+  });
+  const refreshToken = jwt.sign(refreshTokenPayload, JWT_SECRET, {
+    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+    issuer: "almstkshf-blog",
+    audience: "almstkshf-admin"
+  });
+  return { accessToken, refreshToken };
+}
+function verifyToken(token) {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      issuer: "almstkshf-blog",
+      audience: "almstkshf-admin"
+    });
+    return decoded;
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return null;
+  }
+}
+async function authenticateAdmin(usernameOrEmail, password) {
+  const isValidUser = usernameOrEmail === ADMIN_USERNAME || usernameOrEmail === ADMIN_EMAIL;
+  if (!isValidUser) {
+    return null;
+  }
+  const isValidPassword = await verifyPassword(password, ADMIN_PASSWORD_HASH);
+  if (!isValidPassword) {
+    return null;
+  }
+  return {
+    id: "admin-1",
+    username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
+    role: "admin"
+  };
+}
+var authAttempts = /* @__PURE__ */ new Map();
+var MAX_AUTH_ATTEMPTS = 5;
+var AUTH_WINDOW = 15 * 60 * 1e3;
+function authRateLimit(req, res, next) {
+  const clientIP = req.ip || req.connection.remoteAddress || "unknown";
+  const now = Date.now();
+  const attempts = authAttempts.get(clientIP);
+  if (attempts) {
+    if (now - attempts.lastAttempt > AUTH_WINDOW) {
+      authAttempts.delete(clientIP);
+    } else if (attempts.count >= MAX_AUTH_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many authentication attempts. Please try again later.",
+        code: "RATE_LIMITED",
+        retryAfter: Math.ceil((AUTH_WINDOW - (now - attempts.lastAttempt)) / 1e3)
+      });
+    }
+  }
+  next();
+}
+function recordAuthAttempt(clientIP, success) {
+  if (success) {
+    authAttempts.delete(clientIP);
+    return;
+  }
+  const now = Date.now();
+  const attempts = authAttempts.get(clientIP);
+  if (attempts) {
+    attempts.count++;
+    attempts.lastAttempt = now;
+  } else {
+    authAttempts.set(clientIP, { count: 1, lastAttempt: now });
+  }
+}
+
 // server/routes-serverless.ts
 async function registerServerlessRoutes(app2) {
   const upload = (0, import_multer.default)({
@@ -27515,6 +27616,118 @@ async function registerServerlessRoutes(app2) {
       res.json(health);
     } catch (error) {
       res.status(500).json({ error: "Health check failed" });
+    }
+  });
+  app2.post("/api/auth/login", authRateLimit, async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Username/email and password are required"
+        });
+      }
+      const clientIP = req.ip || req.connection.remoteAddress || "unknown";
+      try {
+        const user = await authenticateAdmin(username, password);
+        if (!user) {
+          recordAuthAttempt(clientIP, false);
+          return res.status(401).json({
+            success: false,
+            message: "Invalid credentials"
+          });
+        }
+        const tokens = generateTokens(user);
+        recordAuthAttempt(clientIP, true);
+        res.cookie("refreshToken", tokens.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 7 * 24 * 60 * 60 * 1e3
+          // 7 days
+        });
+        res.json({
+          success: true,
+          message: "Login successful",
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role
+          },
+          accessToken: tokens.accessToken,
+          expiresIn: "24h"
+        });
+      } catch (error) {
+        recordAuthAttempt(clientIP, false);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error"
+      });
+    }
+  });
+  app2.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token required"
+        });
+      }
+      const payload = verifyToken(refreshToken);
+      if (!payload || payload.type !== "refresh") {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid refresh token"
+        });
+      }
+      const user = {
+        id: payload.userId,
+        username: payload.username,
+        email: "",
+        // We don't store email in JWT payload
+        role: payload.role
+      };
+      const tokens = generateTokens(user);
+      res.cookie("refreshToken", tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1e3
+        // 7 days
+      });
+      res.json({
+        success: true,
+        message: "Token refreshed",
+        accessToken: tokens.accessToken,
+        expiresIn: "24h"
+      });
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error"
+      });
+    }
+  });
+  app2.post("/api/auth/logout", async (req, res) => {
+    try {
+      res.clearCookie("refreshToken");
+      res.json({
+        success: true,
+        message: "Logged out successfully"
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error"
+      });
     }
   });
   app2.get("/api/articles", async (req, res) => {

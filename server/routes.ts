@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { username, password } = req.body;
     
     if (!username || !password) {
-      throw new ValidationError("Username and password are required");
+      throw new ValidationError("Username/email and password are required");
     }
 
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
@@ -124,6 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: {
           id: user.id,
           username: user.username,
+          email: user.email,
           role: user.role
         },
         accessToken: tokens.accessToken,

@@ -20,6 +20,15 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import { cloudStorage } from "./cloud-storage";
+import { 
+  authenticateAdmin, 
+  generateTokens, 
+  verifyToken, 
+  authRateLimit, 
+  recordAuthAttempt,
+  requireAuth,
+  requireAdmin
+} from "./auth";
 
 export async function registerServerlessRoutes(app: Express): Promise<void> {
   
@@ -37,6 +46,141 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       res.json(health);
     } catch (error) {
       res.status(500).json({ error: "Health check failed" });
+    }
+  });
+
+  // Authentication routes
+  app.post("/api/auth/login", authRateLimit, async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Username/email and password are required" 
+        });
+      }
+
+      const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+      
+      try {
+        const user = await authenticateAdmin(username, password);
+        
+        if (!user) {
+          recordAuthAttempt(clientIP, false);
+          return res.status(401).json({ 
+            success: false, 
+            message: "Invalid credentials" 
+          });
+        }
+
+        const tokens = generateTokens(user);
+        recordAuthAttempt(clientIP, true);
+
+        // Set secure HTTP-only cookie for refresh token
+        res.cookie('refreshToken', tokens.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        res.json({
+          success: true,
+          message: "Login successful",
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role
+          },
+          accessToken: tokens.accessToken,
+          expiresIn: '24h'
+        });
+        
+      } catch (error) {
+        recordAuthAttempt(clientIP, false);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error" 
+      });
+    }
+  });
+
+  // Refresh token endpoint
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      
+      if (!refreshToken) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Refresh token required" 
+        });
+      }
+
+      const payload = verifyToken(refreshToken);
+      
+      if (!payload || payload.type !== 'refresh') {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid refresh token" 
+        });
+      }
+
+      // Generate new access token
+      const user = {
+        id: payload.userId,
+        username: payload.username,
+        email: '', // We don't store email in JWT payload
+        role: payload.role
+      };
+
+      const tokens = generateTokens(user);
+
+      // Update refresh token cookie
+      res.cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      res.json({
+        success: true,
+        message: "Token refreshed",
+        accessToken: tokens.accessToken,
+        expiresIn: '24h'
+      });
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error" 
+      });
+    }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      // Clear refresh token cookie
+      res.clearCookie('refreshToken');
+      
+      res.json({
+        success: true,
+        message: "Logged out successfully"
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error" 
+      });
     }
   });
 
