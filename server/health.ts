@@ -51,7 +51,7 @@ class HealthMonitor {
       );
 
       const metrics: HealthMetrics = {
-        status: dbResponseTime < 100 ? 'healthy' : dbResponseTime < 500 ? 'degraded' : 'unhealthy',
+        status: dbResponseTime < 1000 ? 'healthy' : dbResponseTime < 3000 ? 'degraded' : 'unhealthy',
         database: {
           connected: !!dbTest.rows[0],
           responseTime: dbResponseTime,

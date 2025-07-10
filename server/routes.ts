@@ -1054,8 +1054,12 @@ Crawl-delay: 1`;
         return res.status(400).json({ message: "Current and new passwords are required" });
       }
       
-      // Verify current password (hardcoded for now)
-      if (currentPassword !== "admin123") {
+      // Verify current password using the auth system
+      const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+      const bcrypt = require('bcryptjs');
+      const isValidPassword = await bcrypt.compare(currentPassword, ADMIN_PASSWORD_HASH);
+      
+      if (!isValidPassword) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
       
