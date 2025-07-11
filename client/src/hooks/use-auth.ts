@@ -68,43 +68,6 @@ export function useAuth() {
     });
   }, []);
 
-  // Verify token with server
-  const verifyToken = useCallback(async (): Promise<boolean> => {
-    const token = authState.token || localStorage.getItem('admin_token');
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      const response = await fetch('/api/auth/verify', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data: AuthResponse = await response.json();
-        if (data.success && data.data) {
-          setAuthState(prev => ({
-            ...prev,
-            user: data.data!.user,
-            isAuthenticated: true,
-          }));
-          return true;
-        }
-      }
-      
-      // Token is invalid, clear auth
-      clearAuth();
-      return false;
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      clearAuth();
-      return false;
-    }
-  }, [authState.token, clearAuth]);
-
   // Refresh access token
   const refreshToken = useCallback(async (): Promise<boolean> => {
     try {
@@ -134,6 +97,63 @@ export function useAuth() {
       return false;
     }
   }, [clearAuth]);
+
+  // Verify token with server
+  const verifyToken = useCallback(async (): Promise<boolean> => {
+    const token = authState.token || localStorage.getItem('admin_token');
+    
+    if (!token) {
+      clearAuth();
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/auth/verify', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data: AuthResponse = await response.json();
+        if (data.success && data.data) {
+          setAuthState(prev => ({
+            ...prev,
+            user: data.data!.user,
+            token: token,
+            isAuthenticated: true,
+          }));
+          return true;
+        }
+      }
+      
+      // Token is invalid, try to refresh first
+      console.log('Token verification failed, attempting refresh...');
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        return true;
+      }
+      
+      // Both verification and refresh failed, clear auth
+      clearAuth();
+      return false;
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      
+      // Try to refresh token on network error
+      try {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          return true;
+        }
+      } catch (refreshError) {
+        console.error('Token refresh also failed:', refreshError);
+      }
+      
+      clearAuth();
+      return false;
+    }
+  }, [authState.token, clearAuth, refreshToken]);
 
   // Logout function
   const logout = useCallback(async () => {
@@ -225,17 +245,55 @@ export function useAuth() {
 export function useRequireAuth() {
   const auth = useAuth();
   const [, setLocation] = useLocation();
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
-    if (!auth.isLoading) {
-      if (!auth.isAuthenticated) {
-        setLocation('/admin/login');
-      } else {
-        // Verify token on mount
-        auth.verifyToken();
-      }
-    }
-  }, [auth.isAuthenticated, auth.isLoading, auth.verifyToken, setLocation]);
+    let isMounted = true;
 
-  return auth;
+    const checkAuth = async () => {
+      // If still loading initial auth state, wait
+      if (auth.isLoading) {
+        return;
+      }
+
+      // If not authenticated and not currently verifying, redirect to login
+      if (!auth.isAuthenticated && !isVerifying) {
+        setLocation('/admin/login');
+        return;
+      }
+
+      // If authenticated but haven't verified token yet, verify it
+      if (auth.isAuthenticated && !isVerifying) {
+        setIsVerifying(true);
+        try {
+          const isValid = await auth.verifyToken();
+          if (isMounted) {
+            if (!isValid) {
+              setLocation('/admin/login');
+            }
+          }
+        } catch (error) {
+          console.error('Token verification error:', error);
+          if (isMounted) {
+            setLocation('/admin/login');
+          }
+        } finally {
+          if (isMounted) {
+            setIsVerifying(false);
+          }
+        }
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [auth.isAuthenticated, auth.isLoading, auth.verifyToken, setLocation, isVerifying]);
+
+  return {
+    ...auth,
+    isLoading: auth.isLoading || isVerifying,
+  };
 }

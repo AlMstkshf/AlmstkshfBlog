@@ -766,7 +766,7 @@ Crawl-delay: 1`;
   app.use("/api/automation", automationRouter);
 
   // Content analysis endpoint (AI disabled)
-  app.post("/api/admin/fix-arabic-content", async (req, res) => {
+  app.post("/api/admin/fix-arabic-content", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { contentFixer } = await import('./automation/contentFixer-disabled');
       const results = await contentFixer.fixIncompleteArabicContent();
@@ -787,7 +787,7 @@ Crawl-delay: 1`;
   });
 
   // Quick content analysis endpoint
-  app.get("/api/admin/content-analysis", async (req, res) => {
+  app.get("/api/admin/content-analysis", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { contentFixer } = await import('./automation/contentFixer-disabled');
       const analysis = await contentFixer.fixIncompleteArabicContent();
@@ -841,7 +841,7 @@ Crawl-delay: 1`;
   });
 
   // Admin Settings API
-  app.get("/api/admin/settings", async (req, res) => {
+  app.get("/api/admin/settings", requireAuth, requireAdmin, async (req, res) => {
     try {
       const settings = {
         publishingEnabled: await storage.getAutomationSetting("publishingEnabled") ?? true,
@@ -871,7 +871,7 @@ Crawl-delay: 1`;
     }
   });
 
-  app.post("/api/admin/settings", async (req, res) => {
+  app.post("/api/admin/settings", requireAuth, requireAdmin, async (req, res) => {
     try {
       const settings = req.body;
       
@@ -982,7 +982,7 @@ Crawl-delay: 1`;
   });
 
   // API Key management routes
-  app.get("/api/admin/api-keys", async (req, res) => {
+  app.get("/api/admin/api-keys", requireAuth, requireAdmin, async (req, res) => {
     try {
       const apiKeys = await storage.getApiKeys();
       // Don't expose actual key values in response, only metadata
@@ -997,7 +997,7 @@ Crawl-delay: 1`;
     }
   });
 
-  app.post("/api/admin/api-keys", async (req, res) => {
+  app.post("/api/admin/api-keys", requireAuth, requireAdmin, async (req, res) => {
     try {
       const apiKeyData = insertApiKeySchema.parse(req.body);
       const newApiKey = await storage.createApiKey(apiKeyData);
@@ -1015,7 +1015,7 @@ Crawl-delay: 1`;
     }
   });
 
-  app.put("/api/admin/api-keys/:id", async (req, res) => {
+  app.put("/api/admin/api-keys/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = insertApiKeySchema.partial().parse(req.body);
@@ -1034,7 +1034,7 @@ Crawl-delay: 1`;
     }
   });
 
-  app.delete("/api/admin/api-keys/:id", async (req, res) => {
+  app.delete("/api/admin/api-keys/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteApiKey(id);
@@ -1046,7 +1046,7 @@ Crawl-delay: 1`;
   });
 
   // Admin password change endpoint
-  app.post("/api/admin/change-password", async (req, res) => {
+  app.post("/api/admin/change-password", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { currentPassword, newPassword } = req.body;
       

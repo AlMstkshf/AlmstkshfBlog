@@ -205,9 +205,53 @@ test.describe('Admin Panel Testing', () => {
 
   test('should verify AI content settings are accessible', async ({ page }) => {
     await loginAsAdmin(page);
+    
+    // Add debugging to check authentication state
+    const tokenExists = await page.evaluate(() => {
+      return localStorage.getItem('admin_token') !== null;
+    });
+    console.log('Token exists after login:', tokenExists);
+    
+    // Navigate to settings with better error handling
     await page.goto(`${baseURL}/admin/settings`);
     
-    await page.waitForTimeout(2000);
+    // Wait for page to load and check if we're still authenticated
+    await page.waitForLoadState('networkidle');
+    
+    // Check if we got redirected back to login
+    const currentUrl = page.url();
+    console.log('Current URL after navigation:', currentUrl);
+    
+    if (currentUrl.includes('/admin/login')) {
+      // Take screenshot for debugging
+      await page.screenshot({ path: `settings-redirect-debug-${Date.now()}.png` });
+      
+      // Check if token still exists
+      const tokenAfterNav = await page.evaluate(() => {
+        return localStorage.getItem('admin_token');
+      });
+      console.log('Token after navigation:', tokenAfterNav ? 'exists' : 'missing');
+      
+      throw new Error('Got redirected to login page when accessing settings');
+    }
+    
+    // Wait for authentication verification to complete
+    await page.waitForTimeout(5000);
+    
+    // Check if still showing verification message
+    const isStillVerifying = await page.locator('text=Verifying authentication').isVisible();
+    if (isStillVerifying) {
+      console.log('Still showing verification message after 5 seconds');
+      
+      // Wait a bit more
+      await page.waitForTimeout(5000);
+      
+      // Check again
+      const stillVerifying = await page.locator('text=Verifying authentication').isVisible();
+      if (stillVerifying) {
+        throw new Error('Authentication verification is stuck - taking too long');
+      }
+    }
     
     // Look for AI Content section
     const aiSection = page.locator('button:has-text("AI Content"), [data-testid="ai-content"]');
@@ -219,6 +263,7 @@ test.describe('Admin Panel Testing', () => {
     
     // Verify AI-related settings
     const pageContent = await page.locator('body').textContent();
+    console.log('Page content preview:', pageContent?.substring(0, 200));
     expect(pageContent).toMatch(/ai|content|generation|language|seo/i);
   });
 
@@ -243,9 +288,38 @@ test.describe('Admin Panel Testing', () => {
 
   test('should verify email and notification settings', async ({ page }) => {
     await loginAsAdmin(page);
+    
+    // Add debugging to check authentication state
+    const tokenExists = await page.evaluate(() => {
+      return localStorage.getItem('admin_token') !== null;
+    });
+    console.log('Token exists after login:', tokenExists);
+    
+    // Navigate to settings with better error handling
     await page.goto(`${baseURL}/admin/settings`);
     
-    await page.waitForTimeout(2000);
+    // Wait for page to load and check if we're still authenticated
+    await page.waitForLoadState('networkidle');
+    
+    // Check if we got redirected back to login
+    const currentUrl = page.url();
+    console.log('Current URL after navigation:', currentUrl);
+    
+    if (currentUrl.includes('/admin/login')) {
+      // Take screenshot for debugging
+      await page.screenshot({ path: `settings-redirect-debug-${Date.now()}.png` });
+      
+      // Check if token still exists
+      const tokenAfterNav = await page.evaluate(() => {
+        return localStorage.getItem('admin_token');
+      });
+      console.log('Token after navigation:', tokenAfterNav ? 'exists' : 'missing');
+      
+      throw new Error('Got redirected to login page when accessing settings');
+    }
+    
+    // Wait for settings content to load
+    await page.waitForTimeout(3000);
     
     // Try to access Email section
     const emailSection = page.locator('button:has-text("Email"), button:has-text("Notifications")');
