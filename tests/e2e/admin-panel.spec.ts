@@ -204,6 +204,10 @@ test.describe('Admin Panel Testing', () => {
   });
 
   test('should verify AI content settings are accessible', async ({ page }) => {
+    // Listen to console messages for debugging
+    page.on('console', msg => console.log('Browser console:', msg.text()));
+    page.on('pageerror', error => console.log('Page error:', error.message));
+    
     await loginAsAdmin(page);
     
     // Add debugging to check authentication state
@@ -235,6 +239,25 @@ test.describe('Admin Panel Testing', () => {
       throw new Error('Got redirected to login page when accessing settings');
     }
     
+    // Check network requests to see if verify is being called
+    const networkRequests = [];
+    page.on('request', request => {
+      if (request.url().includes('/api/auth/verify')) {
+        networkRequests.push({
+          url: request.url(),
+          method: request.method(),
+          headers: request.headers()
+        });
+        console.log('Verify request made:', request.url());
+      }
+    });
+    
+    page.on('response', response => {
+      if (response.url().includes('/api/auth/verify')) {
+        console.log('Verify response:', response.status(), response.statusText());
+      }
+    });
+    
     // Wait for authentication verification to complete
     await page.waitForTimeout(5000);
     
@@ -242,6 +265,13 @@ test.describe('Admin Panel Testing', () => {
     const isStillVerifying = await page.locator('text=Verifying authentication').isVisible();
     if (isStillVerifying) {
       console.log('Still showing verification message after 5 seconds');
+      console.log('Network requests made:', networkRequests);
+      
+      // Check browser console for any errors
+      const consoleMessages = await page.evaluate(() => {
+        return window.console ? 'Console available' : 'No console';
+      });
+      console.log('Console check:', consoleMessages);
       
       // Wait a bit more
       await page.waitForTimeout(5000);
@@ -249,6 +279,8 @@ test.describe('Admin Panel Testing', () => {
       // Check again
       const stillVerifying = await page.locator('text=Verifying authentication').isVisible();
       if (stillVerifying) {
+        // Take screenshot before failing
+        await page.screenshot({ path: `verification-stuck-${Date.now()}.png` });
         throw new Error('Authentication verification is stuck - taking too long');
       }
     }

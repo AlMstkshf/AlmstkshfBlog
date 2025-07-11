@@ -251,68 +251,26 @@ export function useAuth() {
 export function useRequireAuth() {
   const auth = useAuth();
   const [, setLocation] = useLocation();
-  const [verificationState, setVerificationState] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
 
   useEffect(() => {
-    let isMounted = true;
-
-    const checkAuth = async () => {
-      // If still loading initial auth state, wait
-      if (auth.isLoading) {
-        return;
-      }
-
-      // If not authenticated, redirect to login
-      if (!auth.isAuthenticated) {
-        setLocation('/admin/login');
-        return;
-      }
-
-      // If authenticated and haven't started verification yet, start it
-      if (auth.isAuthenticated && verificationState === 'idle') {
-        console.log('Starting token verification...');
-        setVerificationState('verifying');
-        
-        try {
-          const isValid = await auth.verifyToken();
-          console.log('Token verification result:', isValid);
-          
-          if (isMounted) {
-            if (isValid) {
-              console.log('Token valid, authentication complete');
-              setVerificationState('verified');
-            } else {
-              console.log('Token invalid, redirecting to login');
-              setVerificationState('failed');
-              setLocation('/admin/login');
-            }
-          }
-        } catch (error) {
-          console.error('Token verification error:', error);
-          if (isMounted) {
-            setVerificationState('failed');
-            setLocation('/admin/login');
-          }
-        }
-      }
-    };
-
-    checkAuth();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [auth.isAuthenticated, auth.isLoading, auth.verifyToken, setLocation, verificationState]);
-
-  // Reset verification state when authentication state changes
-  useEffect(() => {
-    if (!auth.isAuthenticated) {
-      setVerificationState('idle');
+    // If still loading initial auth state, wait
+    if (auth.isLoading) {
+      return;
     }
-  }, [auth.isAuthenticated]);
+
+    // If not authenticated, redirect to login
+    if (!auth.isAuthenticated) {
+      setLocation('/admin/login');
+      return;
+    }
+
+    // If authenticated, we're good to go - no need for additional verification
+    // The token is already validated during the initial auth state setup
+  }, [auth.isAuthenticated, auth.isLoading, setLocation]);
 
   return {
     ...auth,
-    isLoading: auth.isLoading || verificationState === 'verifying',
+    // Only show loading during initial auth state loading
+    isLoading: auth.isLoading,
   };
 }
