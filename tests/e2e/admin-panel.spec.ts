@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Admin Panel Testing', () => {
-  const baseURL = process.env.TEST_BASE_URL || 'https://almstkshfblog.netlify.app';
+  const baseURL = process.env.TEST_BASE_URL || 'http://localhost:5000';
   const adminCredentials = {
     username: 'admin',
     password: 'P@ssword#123' // Correct password matching the hash in .env

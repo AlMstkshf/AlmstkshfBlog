@@ -89,9 +89,13 @@ function ErrorCard({ title, error, onRetry }: { title: string; error: Error; onR
 
 function AdminDashboardContent() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [articleToDelete, setArticleToDelete] = useState<ArticleWithCategory | null>(null);
+  
+  // Get initial tab from URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();

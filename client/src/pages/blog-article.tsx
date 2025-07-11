@@ -34,39 +34,6 @@ export default function BlogArticle() {
   const [isAccessibilityPanelOpen, setIsAccessibilityPanelOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleShare = () => {
-    if (navigator.share && article) {
-      const shareData = {
-        title: title || article.titleEn,
-        text: excerpt || article.excerptEn || "",
-        url: window.location.href
-      };
-      
-      navigator.share(shareData).catch(() => {
-        // Fallback to copying URL
-        copyUrlToClipboard();
-      });
-    } else {
-      // Fallback to copying URL
-      copyUrlToClipboard();
-    }
-  };
-
-  const copyUrlToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-      toast({
-        title: language === "ar" ? "تم نسخ الرابط" : "Link copied",
-        description: language === "ar" ? "تم نسخ رابط المقال إلى الحافظة" : "Article link copied to clipboard",
-      });
-    }).catch(() => {
-      toast({
-        title: language === "ar" ? "فشل في النسخ" : "Copy failed",
-        description: language === "ar" ? "لا يمكن نسخ الرابط" : "Cannot copy link",
-        variant: "destructive",
-      });
-    });
-  };
-
   const { data: article, isLoading } = useQuery<ArticleWithCategory>({
     queryKey: ["/api/articles", articleSlug],
     queryFn: async () => {
@@ -87,7 +54,7 @@ export default function BlogArticle() {
 
   // Calculate reading time
   const readingTimeResult = calculateReadingTime(content || "", language);
-  const readingTime = readingTimeResult.minutes;
+  const readingTime = readingTimeResult?.minutes || 0;
   
   // URLs and metadata
   const canonicalUrl = article ? `${window.location.origin}/${language}/blog/${article.category?.slug}/${article.slug}` : '';
@@ -107,6 +74,40 @@ export default function BlogArticle() {
   const chartTitles = hasCharts ? [
     language === "ar" ? "مؤشرات فعالية الأطر الاستراتيجية للرصد الإعلامي" : "Strategic Framework Effectiveness Indicators for Media Monitoring"
   ] : [];
+
+  // Share functionality - defined after all computed values
+  const copyUrlToClipboard = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      toast({
+        title: language === "ar" ? "تم نسخ الرابط" : "Link copied",
+        description: language === "ar" ? "تم نسخ رابط المقال إلى الحافظة" : "Article link copied to clipboard",
+      });
+    }).catch(() => {
+      toast({
+        title: language === "ar" ? "فشل في النسخ" : "Copy failed",
+        description: language === "ar" ? "لا يمكن نسخ الرابط" : "Cannot copy link",
+        variant: "destructive",
+      });
+    });
+  };
+
+  const handleShare = () => {
+    if (navigator.share && article) {
+      const shareData = {
+        title: title || article.titleEn,
+        text: excerpt || article.excerptEn || "",
+        url: window.location.href
+      };
+      
+      navigator.share(shareData).catch(() => {
+        // Fallback to copying URL
+        copyUrlToClipboard();
+      });
+    } else {
+      // Fallback to copying URL
+      copyUrlToClipboard();
+    }
+  };
 
   // Handle loading state
   if (isLoading) {

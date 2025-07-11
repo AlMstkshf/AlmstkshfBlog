@@ -45,6 +45,7 @@ function Router() {
       <Route path="/admin/content-strategy" component={() => <ProtectedRoute requiredRole="admin"><ContentStrategyPage /></ProtectedRoute>} />
       <Route path="/admin/automation" component={() => <ProtectedRoute requiredRole="admin"><AutomationDashboard /></ProtectedRoute>} />
       <Route path="/admin/downloads" component={() => <ProtectedRoute requiredRole="admin"><AdminDownloads /></ProtectedRoute>} />
+      <Route path="/admin/articles" component={() => <Redirect to="/admin/dashboard?tab=articles" />} />
       <Route path="/admin/articles/new" component={() => <ProtectedRoute requiredRole="admin"><ArticleEditor /></ProtectedRoute>} />
       <Route path="/admin/articles/:id" component={() => <ProtectedRoute requiredRole="admin"><ArticleEditor /></ProtectedRoute>} />
       
