@@ -101,21 +101,26 @@ export function useAuth() {
   // Verify token with server
   const verifyToken = useCallback(async (): Promise<boolean> => {
     const token = authState.token || localStorage.getItem('admin_token');
+    console.log('verifyToken called, token exists:', !!token);
     
     if (!token) {
+      console.log('No token found, clearing auth');
       clearAuth();
       return false;
     }
 
     try {
+      console.log('Making verify request to /api/auth/verify');
       const response = await fetch('/api/auth/verify', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      console.log('Verify response status:', response.status);
       if (response.ok) {
         const data: AuthResponse = await response.json();
+        console.log('Verify response data:', data);
         if (data.success && data.data) {
           setAuthState(prev => ({
             ...prev,
@@ -123,6 +128,7 @@ export function useAuth() {
             token: token,
             isAuthenticated: true,
           }));
+          console.log('Token verification successful');
           return true;
         }
       }
@@ -245,7 +251,7 @@ export function useAuth() {
 export function useRequireAuth() {
   const auth = useAuth();
   const [, setLocation] = useLocation();
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationState, setVerificationState] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
 
   useEffect(() => {
     let isMounted = true;
@@ -256,30 +262,36 @@ export function useRequireAuth() {
         return;
       }
 
-      // If not authenticated and not currently verifying, redirect to login
-      if (!auth.isAuthenticated && !isVerifying) {
+      // If not authenticated, redirect to login
+      if (!auth.isAuthenticated) {
         setLocation('/admin/login');
         return;
       }
 
-      // If authenticated but haven't verified token yet, verify it
-      if (auth.isAuthenticated && !isVerifying) {
-        setIsVerifying(true);
+      // If authenticated and haven't started verification yet, start it
+      if (auth.isAuthenticated && verificationState === 'idle') {
+        console.log('Starting token verification...');
+        setVerificationState('verifying');
+        
         try {
           const isValid = await auth.verifyToken();
+          console.log('Token verification result:', isValid);
+          
           if (isMounted) {
-            if (!isValid) {
+            if (isValid) {
+              console.log('Token valid, authentication complete');
+              setVerificationState('verified');
+            } else {
+              console.log('Token invalid, redirecting to login');
+              setVerificationState('failed');
               setLocation('/admin/login');
             }
           }
         } catch (error) {
           console.error('Token verification error:', error);
           if (isMounted) {
+            setVerificationState('failed');
             setLocation('/admin/login');
-          }
-        } finally {
-          if (isMounted) {
-            setIsVerifying(false);
           }
         }
       }
@@ -290,10 +302,17 @@ export function useRequireAuth() {
     return () => {
       isMounted = false;
     };
-  }, [auth.isAuthenticated, auth.isLoading, auth.verifyToken, setLocation, isVerifying]);
+  }, [auth.isAuthenticated, auth.isLoading, auth.verifyToken, setLocation, verificationState]);
+
+  // Reset verification state when authentication state changes
+  useEffect(() => {
+    if (!auth.isAuthenticated) {
+      setVerificationState('idle');
+    }
+  }, [auth.isAuthenticated]);
 
   return {
     ...auth,
-    isLoading: auth.isLoading || isVerifying,
+    isLoading: auth.isLoading || verificationState === 'verifying',
   };
 }
