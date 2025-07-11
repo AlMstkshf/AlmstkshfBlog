@@ -93,6 +93,8 @@ function Router() {
       {/* Category pages - More general patterns last */}
       <Route path="/en/blog/:slug" component={BlogCategory} />
       <Route path="/ar/blog/:slug" component={BlogCategory} />
+      <Route path="/en/category/:slug" component={BlogCategory} />
+      <Route path="/ar/category/:slug" component={BlogCategory} />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />

@@ -14,7 +14,21 @@ export default function BlogCategory() {
   const { language, isRTL } = useLanguage();
 
   // List of valid category slugs to prevent conflicts with static pages
-  const validCategories = ['government', 'business-intelligence', 'technology-innovation', 'social-media-analysis'];
+  const validCategories = [
+    'media-monitoring', 
+    'ai-intelligence', 
+    'crisis-communication', 
+    'digital-transformation', 
+    'data-analytics', 
+    'government-communication',
+    // Legacy categories for backward compatibility
+    'government', 
+    'business-intelligence', 
+    'technology-innovation', 
+    'social-media-analysis',
+    'artificial-intelligence',
+    'technology'
+  ];
   const isValidCategory = slug && validCategories.includes(slug);
 
   const { data: category, isLoading: categoryLoading, error } = useQuery<Category>({
