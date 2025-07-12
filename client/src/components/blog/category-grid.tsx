@@ -70,7 +70,7 @@ export function CategoryGrid({ categories: propCategories }: CategoryGridProps =
 
         const IconComponent = iconMap[category.iconName as keyof typeof iconMap] || Building2;
 
-        const categoryUrl = `/${language}/blog/${category.slug}`;
+        const categoryUrl = `/${language}/category/${category.slug}`;
 
         return (
           <Link key={category.id} href={categoryUrl}>
