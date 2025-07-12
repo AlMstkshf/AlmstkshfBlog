@@ -218,7 +218,9 @@ export class DatabaseStorage implements IStorage {
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
-      // Content is excluded from listing for performance
+      content: '', // Content is excluded from listing for performance
+      contentEn: '', // Required for ArticleWithCategory compatibility
+      contentAr: '', // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn,
     })) as ArticleWithCategory[];
   }
@@ -315,7 +317,7 @@ export class DatabaseStorage implements IStorage {
     const [{ count: total }] = await countQuery;
 
     // Build main query
-    let query = db
+    let baseQuery = db
       .select({
         id: articles.id,
         slug: articles.slug,
@@ -351,31 +353,41 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(categories, eq(articles.categoryId, categories.id));
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      baseQuery = baseQuery.where(and(...conditions));
     }
 
-    // Apply sorting
+    // Apply sorting and execute query
+    let results;
     if (sortBy === "publishedAt") {
-      query = query.orderBy(
-        sortOrder === "desc" ? desc(articles.publishedAt) : asc(articles.publishedAt),
-        sortOrder === "desc" ? desc(articles.id) : asc(articles.id) // Secondary sort for consistency
-      );
+      results = await baseQuery
+        .orderBy(
+          sortOrder === "desc" ? desc(articles.publishedAt) : asc(articles.publishedAt),
+          sortOrder === "desc" ? desc(articles.id) : asc(articles.id) // Secondary sort for consistency
+        )
+        .limit(limit + 1)
+        .offset(cursor ? 0 : offset);
     } else if (sortBy === "createdAt") {
-      query = query.orderBy(
-        sortOrder === "desc" ? desc(articles.createdAt) : asc(articles.createdAt),
-        sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
-      );
+      results = await baseQuery
+        .orderBy(
+          sortOrder === "desc" ? desc(articles.createdAt) : asc(articles.createdAt),
+          sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
+        )
+        .limit(limit + 1)
+        .offset(cursor ? 0 : offset);
     } else if (sortBy === "id") {
-      query = query.orderBy(
-        sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
-      );
+      results = await baseQuery
+        .orderBy(
+          sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
+        )
+        .limit(limit + 1)
+        .offset(cursor ? 0 : offset);
     } else {
       // Default to publishedAt
-      query = query.orderBy(desc(articles.publishedAt), desc(articles.id));
+      results = await baseQuery
+        .orderBy(desc(articles.publishedAt), desc(articles.id))
+        .limit(limit + 1)
+        .offset(cursor ? 0 : offset);
     }
-
-    // Apply limit and offset
-    const results = await query.limit(limit + 1).offset(cursor ? 0 : offset);
 
     // Determine if there are more results
     const hasNext = results.length > limit;
@@ -402,6 +414,9 @@ export class DatabaseStorage implements IStorage {
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
+      content: '', // Empty content for list view performance
+      contentEn: '', // Required for ArticleWithCategory compatibility
+      contentAr: '', // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn,
     })) as ArticleWithCategory[];
 
@@ -565,8 +580,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchArticles(query: string, language = "en"): Promise<ArticleWithCategory[]> {
-    const searchTerm = `%${query}%`;
+    // Input validation and sanitization
+    if (!query || typeof query !== 'string') {
+      return [];
+    }
     
+    // Trim and limit query length to prevent abuse
+    const sanitizedQuery = query.trim().slice(0, 100);
+    if (sanitizedQuery.length === 0) {
+      return [];
+    }
+    
+    // Optimize search by prioritizing title matches and excluding content from initial search
+    // This reduces the amount of data transferred and improves performance
     const results = await db
       .select({
         id: articles.id,
@@ -575,8 +601,7 @@ export class DatabaseStorage implements IStorage {
         titleAr: articles.titleAr,
         excerptEn: articles.excerptEn,
         excerptAr: articles.excerptAr,
-        contentEn: articles.contentEn,
-        contentAr: articles.contentAr,
+        // Exclude content from search results for performance
         metaDescriptionEn: articles.metaDescriptionEn,
         metaDescriptionAr: articles.metaDescriptionAr,
         featuredImage: articles.featuredImage,
@@ -606,23 +631,30 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(articles.published, true),
           or(
-            ilike(articles.titleEn, searchTerm),
-            ilike(articles.titleAr, searchTerm),
-            ilike(articles.contentEn, searchTerm),
-            ilike(articles.contentAr, searchTerm),
-            ilike(categories.nameEn, searchTerm),
-            ilike(categories.nameAr, searchTerm)
+            // Prioritize title and excerpt matches for better performance
+            ilike(articles.titleEn, `%${sanitizedQuery}%`),
+            ilike(articles.titleAr, `%${sanitizedQuery}%`),
+            ilike(articles.excerptEn, `%${sanitizedQuery}%`),
+            ilike(articles.excerptAr, `%${sanitizedQuery}%`),
+            ilike(categories.nameEn, `%${sanitizedQuery}%`),
+            ilike(categories.nameAr, `%${sanitizedQuery}%`)
           )
         )
       )
-      .orderBy(desc(articles.publishedAt))
-      .limit(50);
+      .orderBy(
+        // Order by featured first, then by publish date for better relevance
+        desc(articles.featured),
+        desc(articles.publishedAt)
+      )
+      .limit(30); // Reduced limit for better performance
 
     return results.map(article => ({
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
-      content: language === "ar" ? article.contentAr || article.contentEn : article.contentEn,
+      content: '', // Don't include content in search results for performance
+      contentEn: '', // Required for ArticleWithCategory compatibility
+      contentAr: '', // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn,
     })) as ArticleWithCategory[];
   }
@@ -747,8 +779,10 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   } = {}): Promise<Download[]> {
-    let query = db.select().from(downloads);
-
+    // Set default limit to prevent large data transfers
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
+    
     const conditions = [];
     if (options.category) {
       conditions.push(eq(downloads.category, options.category));
@@ -760,20 +794,23 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(downloads.featured, options.featured));
     }
 
+    let query = db.select().from(downloads);
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
 
-    query = query.orderBy(desc(downloads.featured), desc(downloads.uploadedAt));
+    // Optimize ordering for better index usage
+    const results = await query
+      .orderBy(
+        desc(downloads.featured), 
+        desc(downloads.uploadedAt),
+        desc(downloads.downloadCount) // Add download count for popularity
+      )
+      .limit(limit)
+      .offset(offset);
 
-    if (options.limit) {
-      query = query.limit(options.limit);
-    }
-    if (options.offset) {
-      query = query.offset(options.offset);
-    }
-
-    return await query;
+    return results;
   }
 
   async getDownloadById(id: number): Promise<Download | undefined> {

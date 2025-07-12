@@ -35,7 +35,12 @@ export const categories = pgTable("categories", {
   descriptionAr: text("description_ar"),
   iconName: varchar("icon_name", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for categories
+  index("idx_categories_slug").on(table.slug),
+  index("idx_categories_name_en").on(table.nameEn),
+  index("idx_categories_name_ar").on(table.nameAr),
+]);
 
 // Articles table
 export const articles = pgTable("articles", {
@@ -82,7 +87,13 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   language: varchar("language", { length: 2 }).notNull().default("en"), // 'en' or 'ar'
   subscribedAt: timestamp("subscribed_at").defaultNow(),
   active: boolean("active").default(true),
-});
+}, (table) => [
+  // Performance indexes for newsletter subscribers
+  index("idx_newsletter_email").on(table.email),
+  index("idx_newsletter_active").on(table.active),
+  index("idx_newsletter_subscribed_at").on(table.subscribedAt),
+  index("idx_newsletter_language").on(table.language),
+]);
 
 // Contact form submissions
 export const contactSubmissions = pgTable("contact_submissions", {
@@ -95,7 +106,14 @@ export const contactSubmissions = pgTable("contact_submissions", {
   language: varchar("language", { length: 2 }).notNull().default("en"),
   submittedAt: timestamp("submitted_at").defaultNow(),
   responded: boolean("responded").default(false),
-});
+}, (table) => [
+  // Performance indexes for contact submissions
+  index("idx_contact_email").on(table.email),
+  index("idx_contact_type").on(table.type),
+  index("idx_contact_responded").on(table.responded),
+  index("idx_contact_submitted_at").on(table.submittedAt),
+  index("idx_contact_language").on(table.language),
+]);
 
 // Automation settings table for persistent configuration
 export const automationSettings = pgTable("automation_settings", {
@@ -116,7 +134,12 @@ export const apiKeys = pgTable("api_keys", {
   lastUsed: timestamp("last_used"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for API keys
+  index("idx_api_keys_service_name").on(table.serviceName),
+  index("idx_api_keys_is_active").on(table.isActive),
+  index("idx_api_keys_last_used").on(table.lastUsed),
+]);
 
 // Downloads table for file management
 export const downloads = pgTable("downloads", {
@@ -141,7 +164,18 @@ export const downloads = pgTable("downloads", {
   uploadedAt: timestamp("uploaded_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for downloads
+  index("idx_downloads_category").on(table.category),
+  index("idx_downloads_file_type").on(table.fileType),
+  index("idx_downloads_featured").on(table.featured),
+  index("idx_downloads_uploaded_at").on(table.uploadedAt),
+  index("idx_downloads_download_count").on(table.downloadCount),
+  // Composite indexes for common query patterns
+  index("idx_downloads_category_featured").on(table.category, table.featured),
+  index("idx_downloads_file_type_featured").on(table.fileType, table.featured),
+  index("idx_downloads_featured_uploaded_at").on(table.featured, table.uploadedAt),
+]);
 
 // Relations
 export const categoriesRelations = relations(categories, ({ many }) => ({
@@ -178,22 +212,43 @@ export const insertDownloadSchema = createInsertSchema(downloads)
   .omit({ id: true, downloadCount: true, createdAt: true, updatedAt: true, uploadedAt: true });
 
 // Inferred TS types
-export type UserInsert = typeof users.$inferInsert;
-export type UserSelect = typeof users.$inferSelect;
-export type CategorySelect = typeof categories.$inferSelect;
-export type CategoryInsert = z.infer<typeof insertCategorySchema>;
-export type ArticleSelect = typeof articles.$inferSelect;
-export type ArticleInsert = z.infer<typeof insertArticleSchema>;
-export type NewsletterSubscriberSelect = typeof newsletterSubscribers.$inferSelect;
-export type NewsletterSubscriberInsert = z.infer<typeof insertNewsletterSubscriberSchema>;
-export type ContactSubmissionSelect = typeof contactSubmissions.$inferSelect;
-export type ContactSubmissionInsert = z.infer<typeof insertContactSubmissionSchema>;
-export type ApiKeySelect = typeof apiKeys.$inferSelect;
-export type ApiKeyInsert = z.infer<typeof insertApiKeySchema>;
-export type DownloadSelect = typeof downloads.$inferSelect;
-export type DownloadInsert = z.infer<typeof insertDownloadSchema>;
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Article = typeof articles.$inferSelect;
+export type InsertArticle = z.infer<typeof insertArticleSchema>;
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscriberSchema>;
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type InsertContactSubmission = z.infer<typeof insertContactSubmissionSchema>;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type Download = typeof downloads.$inferSelect;
+export type InsertDownload = z.infer<typeof insertDownloadSchema>;
 
-// Extended types with relations
-export type ArticleWithCategory = ArticleSelect & {
-  category?: CategorySelect;
+// Legacy type aliases for backward compatibility
+export type UserInsert = UpsertUser;
+export type UserSelect = User;
+export type CategorySelect = Category;
+export type CategoryInsert = InsertCategory;
+export type ArticleSelect = Article;
+export type ArticleInsert = InsertArticle;
+export type NewsletterSubscriberSelect = NewsletterSubscriber;
+export type NewsletterSubscriberInsert = InsertNewsletterSubscriber;
+export type ContactSubmissionSelect = ContactSubmission;
+export type ContactSubmissionInsert = InsertContactSubmission;
+export type ApiKeySelect = ApiKey;
+export type ApiKeyInsert = InsertApiKey;
+export type DownloadSelect = Download;
+export type DownloadInsert = InsertDownload;
+
+// Extended types with relations and computed fields
+export type ArticleWithCategory = Article & {
+  category?: Category;
+  // Computed fields for language-specific content
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  metaDescription?: string;
 };
