@@ -2,15 +2,30 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
 
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+// JWT configuration - MUST be set in environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Shorter access token lifetime
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
-// Admin credentials (in production, store hashed password in database)
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'rased@almstkshf.com';
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; // Default: 'password'
+// Validate required environment variables
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+  throw new Error('JWT_SECRET and JWT_REFRESH_SECRET environment variables are required');
+}
+
+if (JWT_SECRET.length < 32 || JWT_REFRESH_SECRET.length < 32) {
+  throw new Error('JWT secrets must be at least 32 characters long');
+}
+
+// Admin credentials - MUST be set in environment variables
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+
+// Validate admin credentials
+if (!ADMIN_USERNAME || !ADMIN_EMAIL || !ADMIN_PASSWORD_HASH) {
+  throw new Error('ADMIN_USERNAME, ADMIN_EMAIL, and ADMIN_PASSWORD_HASH environment variables are required');
+}
 
 export interface AuthUser {
   id: string;
@@ -37,7 +52,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-// Generate JWT tokens
+// Generate JWT tokens with separate secrets
 export function generateTokens(user: AuthUser): { accessToken: string; refreshToken: string } {
   const accessTokenPayload: JWTPayload = {
     userId: user.id,
@@ -53,28 +68,38 @@ export function generateTokens(user: AuthUser): { accessToken: string; refreshTo
     type: 'refresh'
   };
 
-  const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET, {
+  const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET!, {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'almstkshf-blog',
-    audience: 'almstkshf-admin'
+    audience: 'almstkshf-admin',
+    algorithm: 'HS256'
   });
 
-  const refreshToken = jwt.sign(refreshTokenPayload, JWT_SECRET, {
+  const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET!, {
     expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     issuer: 'almstkshf-blog',
-    audience: 'almstkshf-admin'
+    audience: 'almstkshf-admin',
+    algorithm: 'HS256'
   });
 
   return { accessToken, refreshToken };
 }
 
-// Verify JWT token
-export function verifyToken(token: string): JWTPayload | null {
+// Verify JWT token with appropriate secret based on token type
+export function verifyToken(token: string, tokenType: 'access' | 'refresh' = 'access'): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
+    const secret = tokenType === 'access' ? JWT_SECRET! : JWT_REFRESH_SECRET!;
+    const decoded = jwt.verify(token, secret, {
       issuer: 'almstkshf-blog',
-      audience: 'almstkshf-admin'
+      audience: 'almstkshf-admin',
+      algorithms: ['HS256']
     }) as JWTPayload;
+    
+    // Verify token type matches expected type
+    if (decoded.type !== tokenType) {
+      throw new Error(`Invalid token type. Expected ${tokenType}, got ${decoded.type}`);
+    }
+    
     return decoded;
   } catch (error) {
     console.error('Token verification failed:', error);
@@ -149,10 +174,21 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Rate limiting for auth endpoints
+// Rate limiting for auth endpoints with memory leak prevention
 const authAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const MAX_AUTH_ATTEMPTS = 5;
 const AUTH_WINDOW = 15 * 60 * 1000; // 15 minutes
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+// Cleanup expired entries to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempt] of authAttempts.entries()) {
+    if (now - attempt.lastAttempt > AUTH_WINDOW) {
+      authAttempts.delete(ip);
+    }
+  }
+}, CLEANUP_INTERVAL);
 
 export function authRateLimit(req: Request, res: Response, next: NextFunction) {
   const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
@@ -200,6 +236,41 @@ export async function generateAdminPasswordHash(password: string): Promise<void>
   const hash = await hashPassword(password);
   console.log('Admin password hash:', hash);
   console.log('Set this as ADMIN_PASSWORD_HASH environment variable');
+}
+
+// Change admin password (for production use, this should update a database)
+export async function changeAdminPassword(currentPassword: string, newPassword: string): Promise<boolean> {
+  // Verify current password
+  const isCurrentValid = await verifyPassword(currentPassword, ADMIN_PASSWORD_HASH!);
+  if (!isCurrentValid) {
+    return false;
+  }
+
+  // In a real application, you would update the database here
+  // For now, we'll generate the new hash for manual environment variable update
+  const newHash = await hashPassword(newPassword);
+  console.log('New admin password hash:', newHash);
+  console.log('Update ADMIN_PASSWORD_HASH environment variable with this value and restart the application');
+  
+  return true;
+}
+
+// Refresh token functionality
+export function refreshAccessToken(refreshToken: string): string | null {
+  const payload = verifyToken(refreshToken, 'refresh');
+  if (!payload) {
+    return null;
+  }
+
+  const user: AuthUser = {
+    id: payload.userId,
+    username: payload.username,
+    email: ADMIN_EMAIL!,
+    role: payload.role
+  };
+
+  const { accessToken } = generateTokens(user);
+  return accessToken;
 }
 
 // Extend Express Request type
