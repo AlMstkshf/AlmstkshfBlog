@@ -24,6 +24,10 @@ import ArticleEditor from "@/pages/admin/article-editor";
 import Downloads from "@/pages/downloads-minimal";
 import AdminDownloads from "@/pages/admin-downloads";
 import PlatformAnalysis from "@/pages/platform-analysis";
+import MediaMonitoring from "@/pages/services/media-monitoring";
+import SocialAnalytics from "@/pages/services/social-analytics";
+import SentimentAnalysis from "@/pages/services/sentiment-analysis";
+import CrisisManagement from "@/pages/services/crisis-management";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import AutomationDashboard from "@/components/admin/automation-dashboard";
@@ -60,6 +64,12 @@ function Router() {
       <Route path="/downloads" component={Downloads} />
       <Route path="/platform-analysis" component={PlatformAnalysis} />
       
+      {/* Services pages */}
+      <Route path="/services/media-monitoring" component={MediaMonitoring} />
+      <Route path="/services/social-analytics" component={SocialAnalytics} />
+      <Route path="/services/sentiment-analysis" component={SentimentAnalysis} />
+      <Route path="/services/crisis-management" component={CrisisManagement} />
+      
       {/* Language-specific static pages */}
       <Route path="/ar/sitemap" component={Sitemap} />
       <Route path="/en/sitemap" component={Sitemap} />
@@ -79,6 +89,16 @@ function Router() {
       <Route path="/en/downloads" component={Downloads} />
       <Route path="/ar/platform-analysis" component={PlatformAnalysis} />
       <Route path="/en/platform-analysis" component={PlatformAnalysis} />
+      
+      {/* Language-specific services pages */}
+      <Route path="/ar/services/media-monitoring" component={MediaMonitoring} />
+      <Route path="/en/services/media-monitoring" component={MediaMonitoring} />
+      <Route path="/ar/services/social-analytics" component={SocialAnalytics} />
+      <Route path="/en/services/social-analytics" component={SocialAnalytics} />
+      <Route path="/ar/services/sentiment-analysis" component={SentimentAnalysis} />
+      <Route path="/en/services/sentiment-analysis" component={SentimentAnalysis} />
+      <Route path="/ar/services/crisis-management" component={CrisisManagement} />
+      <Route path="/en/services/crisis-management" component={CrisisManagement} />
       
 
       
