@@ -164,6 +164,11 @@ export class DatabaseStorage implements IStorage {
   } = {}): Promise<ArticleWithCategory[]> {
     const { categoryId, featured, published = true, limit = 50, offset = 0, language = "en" } = options;
 
+    const conditions = [];
+    if (published !== undefined) conditions.push(eq(articles.published, published));
+    if (featured !== undefined) conditions.push(eq(articles.featured, featured));
+    if (categoryId !== undefined) conditions.push(eq(articles.categoryId, categoryId));
+
     let query = db
       .select({
         id: articles.id,
@@ -197,12 +202,8 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .from(articles)
-      .leftJoin(categories, eq(articles.categoryId, categories.id));
-
-    const conditions = [];
-    if (published !== undefined) conditions.push(eq(articles.published, published));
-    if (featured !== undefined) conditions.push(eq(articles.featured, featured));
-    if (categoryId !== undefined) conditions.push(eq(articles.categoryId, categoryId));
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .$dynamic();
 
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
@@ -300,18 +301,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get total count for pagination metadata
+    const countConditions = conditions.filter(condition => {
+      const conditionStr = condition?.toString() || '';
+      return !conditionStr.includes('publishedAt') && !conditionStr.includes('id');
+    });
+    
     let countQuery = db
       .select({ count: sql<number>`count(*)` })
-      .from(articles);
+      .from(articles)
+      .$dynamic();
 
-    if (conditions.length > 0) {
-      const countConditions = conditions.filter(condition => 
-        !condition.toString().includes('publishedAt') || 
-        !condition.toString().includes('id')
-      );
-      if (countConditions.length > 0) {
-        countQuery = countQuery.where(and(...countConditions));
-      }
+    if (countConditions.length > 0) {
+      countQuery = countQuery.where(and(...countConditions));
     }
 
     const [{ count: total }] = await countQuery;
@@ -350,7 +351,8 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .from(articles)
-      .leftJoin(categories, eq(articles.categoryId, categories.id));
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .$dynamic();
 
     if (conditions.length > 0) {
       baseQuery = baseQuery.where(and(...conditions));
@@ -794,7 +796,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(downloads.featured, options.featured));
     }
 
-    let query = db.select().from(downloads);
+    let query = db.select().from(downloads).$dynamic();
 
     if (conditions.length > 0) {
       query = query.where(and(...conditions));

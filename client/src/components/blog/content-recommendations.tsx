@@ -104,7 +104,7 @@ export function ContentRecommendations({
               <div className="group cursor-pointer p-4 rounded-lg border border-slate-200 hover:border-primary/30 hover:shadow-md transition-all duration-300">
                 <div className="flex items-start justify-between mb-2">
                   <Badge variant="secondary" className="text-xs">
-                    {language === "ar" ? article.category?.nameAr : article.category?.name}
+                    {language === "ar" ? article.category?.nameAr : article.category?.nameEn}
                   </Badge>
                   {article.featured && (
                     <TrendingUp className="w-4 h-4 text-primary" />

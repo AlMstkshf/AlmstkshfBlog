@@ -27,14 +27,14 @@ export function useParallelBlogData(config: Partial<ParallelLoadingConfig> = {})
       {
         queryKey: ['/api/articles', { featured: true, limit: 6 }],
         staleTime: finalConfig.staleTime,
-        cacheTime: finalConfig.cacheTime,
+        gcTime: finalConfig.cacheTime,
         refetchOnWindowFocus: finalConfig.refetchOnWindowFocus,
         enabled: finalConfig.enableParallel,
       },
       {
         queryKey: ['/api/articles', { limit: 12 }],
         staleTime: finalConfig.staleTime,
-        cacheTime: finalConfig.cacheTime,
+        gcTime: finalConfig.cacheTime,
         refetchOnWindowFocus: finalConfig.refetchOnWindowFocus,
         enabled: finalConfig.enableParallel,
       },

@@ -36,6 +36,14 @@ interface RichTextEditorProps {
   language: 'en' | 'ar';
 }
 
+type ToolbarButton = {
+  icon: React.ComponentType<any>;
+  title: string;
+} & (
+  | { command: string; value?: string; action?: never }
+  | { action: () => void; command?: never; value?: never }
+);
+
 export function RichTextEditor({ content, onChange, placeholder, language }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -170,7 +178,7 @@ export function RichTextEditor({ content, onChange, placeholder, language }: Ric
     }
   };
 
-  const toolbarButtons = [
+  const toolbarButtons: { group: string; buttons: ToolbarButton[] }[] = [
     {
       group: 'formatting',
       buttons: [
@@ -283,10 +291,11 @@ export function RichTextEditor({ content, onChange, placeholder, language }: Ric
             contentEditable
             onInput={updateContent}
             onBlur={updateContent}
-            className={`min-h-[360px] outline-none prose max-w-none ${isRTL ? 'prose-rtl text-right' : 'text-left'}`}
+            className={`min-h-[360px] outline-none prose max-w-none relative ${isRTL ? 'prose-rtl text-right' : 'text-left'} 
+              empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none empty:before:absolute`}
             style={{ direction: isRTL ? 'rtl' : 'ltr' }}
             suppressContentEditableWarning={true}
-            placeholder={placeholder}
+            data-placeholder={placeholder}
           />
         )}
       </div>

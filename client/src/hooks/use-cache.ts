@@ -132,7 +132,7 @@ export function useAdvancedCache(config: Partial<CacheConfig> = {}) {
       return {
         totalQueries: queries.length,
         staleQueries: queries.filter(q => q.isStale()).length,
-        loadingQueries: queries.filter(q => q.state.isFetching).length,
+        loadingQueries: queries.filter(q => q.state.isLoading).length,
         estimatedSize: queries.reduce((size, query) => {
           const data = query.state.data;
           return size + (data ? JSON.stringify(data).length : 0);

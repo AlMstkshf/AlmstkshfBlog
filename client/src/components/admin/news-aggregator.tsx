@@ -110,10 +110,7 @@ export function NewsAggregator() {
   // Create new aggregation job
   const createJobMutation = useMutation({
     mutationFn: async (jobData: Partial<AggregationJob>) => {
-      return apiRequest("/api/admin/news-jobs", {
-        method: "POST",
-        body: JSON.stringify(jobData),
-      });
+      return apiRequest("POST", "/api/admin/news-jobs", jobData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/news-jobs"] });
@@ -136,9 +133,9 @@ export function NewsAggregator() {
   // Run manual news fetch
   const manualFetchMutation = useMutation({
     mutationFn: async (countries: string[]) => {
-      return apiRequest("/api/admin/news-fetch", {
-        method: "POST",
-        body: JSON.stringify({ countries, keywords: keywords.split(',').filter(k => k.trim()) }),
+      return apiRequest("POST", "/api/admin/news-fetch", { 
+        countries, 
+        keywords: keywords.split(',').filter(k => k.trim()) 
       });
     },
     onSuccess: () => {

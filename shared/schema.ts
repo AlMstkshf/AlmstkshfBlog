@@ -246,6 +246,7 @@ export type DownloadInsert = InsertDownload;
 // Extended types with relations and computed fields
 export type ArticleWithCategory = Article & {
   category?: Category;
+  tags?: string[];
   // Computed fields for language-specific content
   title?: string;
   excerpt?: string;
