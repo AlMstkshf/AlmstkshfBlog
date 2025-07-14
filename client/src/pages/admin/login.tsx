@@ -31,17 +31,23 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Dismiss any existing toasts to prevent contradictory messages
+    dismiss();
+    
     if (!username.trim() || !password.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter both username and password",
-        variant: "destructive",
-      });
+      // Small delay to ensure previous toast is dismissed
+      setTimeout(() => {
+        toast({
+          title: "Validation Error",
+          description: "Please enter both username and password",
+          variant: "destructive",
+        });
+      }, 100);
       return;
     }
 
@@ -64,10 +70,13 @@ export default function AdminLogin() {
         localStorage.setItem("admin_token", data.data.accessToken);
         localStorage.setItem("admin_user", JSON.stringify(data.data.user));
         
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${data.data.user.username}!`,
-        });
+        // Small delay to ensure any previous toasts are dismissed
+        setTimeout(() => {
+          toast({
+            title: "Login Successful",
+            description: `Welcome back, ${data.data.user.username}!`,
+          });
+        }, 100);
         
         setLocation("/admin/dashboard");
       } else {
@@ -76,17 +85,23 @@ export default function AdminLogin() {
           setRateLimited(true);
           setRetryAfter(data.retryAfter || 900); // 15 minutes default
           
-          toast({
-            title: "Too Many Attempts",
-            description: `Please wait ${Math.ceil((data.retryAfter || 900) / 60)} minutes before trying again.`,
-            variant: "destructive",
-          });
+          // Small delay to ensure any previous toasts are dismissed
+          setTimeout(() => {
+            toast({
+              title: "Too Many Attempts",
+              description: `Please wait ${Math.ceil((data.retryAfter || 900) / 60)} minutes before trying again.`,
+              variant: "destructive",
+            });
+          }, 100);
         } else {
-          toast({
-            title: "Login Failed",
-            description: data.message || "Invalid credentials",
-            variant: "destructive",
-          });
+          // Small delay to ensure any previous toasts are dismissed
+          setTimeout(() => {
+            toast({
+              title: "Login Failed",
+              description: data.message || "Invalid credentials",
+              variant: "destructive",
+            });
+          }, 100);
         }
       }
     } catch (error) {
