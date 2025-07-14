@@ -60,8 +60,8 @@ export const responseTimeMiddleware = (req: Request, res: Response, next: NextFu
   const endpoint = `${req.method} ${req.path}`;
   
   // Override res.end to capture response time
-  const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any) {
+  const originalEnd = res.end.bind(res);
+  res.end = function(chunk?: any, encoding?: any, cb?: any) {
     const endTime = Date.now();
     const responseTime = endTime - startTime;
     
@@ -102,9 +102,9 @@ export const responseTimeMiddleware = (req: Request, res: Response, next: NextFu
     // Add response time header for debugging
     res.setHeader('X-Response-Time', `${responseTime}ms`);
     
-    // Call original end method
-    originalEnd.call(this, chunk, encoding);
-  };
+    // Call original end method and return its result
+    return originalEnd(chunk, encoding, cb);
+  } as any;
   
   next();
 };

@@ -245,8 +245,14 @@ export const cacheService = new CacheService();
 export const CACHE_TTL = {
   ARTICLES_LIST: 5 * 60 * 1000,      // 5 minutes
   ARTICLE_DETAIL: 10 * 60 * 1000,    // 10 minutes
+  CATEGORIES_LIST: 30 * 60 * 1000,   // 30 minutes
+  CATEGORY_DETAIL: 60 * 60 * 1000,   // 1 hour
   CATEGORIES: 30 * 60 * 1000,        // 30 minutes
+  DOWNLOADS_LIST: 30 * 60 * 1000,    // 30 minutes
+  DOWNLOAD_DETAIL: 60 * 60 * 1000,   // 1 hour
   DOWNLOADS: 15 * 60 * 1000,         // 15 minutes
+  CONTACT_SUBMISSIONS: 5 * 60 * 1000, // 5 minutes
+  NEWSLETTER_SUBSCRIBERS: 5 * 60 * 1000, // 5 minutes
   SITEMAP: 60 * 60 * 1000,           // 1 hour
   SEARCH_RESULTS: 2 * 60 * 1000,     // 2 minutes
   ADMIN_SETTINGS: 5 * 60 * 1000      // 5 minutes
@@ -270,6 +276,16 @@ export const cacheInvalidation = {
   // Invalidate all download-related cache
   downloads: () => {
     cacheService.invalidatePattern('downloads');
+  },
+  
+  // Invalidate all contact-related cache
+  contact: () => {
+    cacheService.invalidatePattern('contact');
+  },
+  
+  // Invalidate all newsletter-related cache
+  newsletter: () => {
+    cacheService.invalidatePattern('newsletter');
   },
   
   // Invalidate search cache

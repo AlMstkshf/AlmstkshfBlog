@@ -79,6 +79,43 @@ class AnalyticsTracker {
     this.updateContentPerformance(behavior);
   }
 
+  trackEvent(eventName: string, eventData: any): void {
+    // Convert event to behavior format for compatibility
+    const behavior: UserBehavior = {
+      sessionId: eventData.sessionId || 'anonymous',
+      userId: eventData.userId,
+      articleId: eventData.articleId || 0,
+      action: this.mapEventToAction(eventName),
+      timestamp: new Date(),
+      metadata: {
+        ...eventData,
+        referrer: eventData.referrer,
+        device: eventData.userAgent,
+        language: eventData.lang || eventData.language,
+      }
+    };
+    
+    this.trackBehavior(behavior);
+  }
+
+  private mapEventToAction(eventName: string): UserBehavior['action'] {
+    switch (eventName) {
+      case 'articles_viewed':
+      case 'article_viewed':
+      case 'category_viewed':
+        return 'view';
+      case 'search_performed':
+        return 'search';
+      case 'newsletter_subscription':
+      case 'contact_form_submitted':
+      case 'file_uploaded':
+      case 'file_downloaded':
+        return 'click';
+      default:
+        return 'view';
+    }
+  }
+
   private updateContentPerformance(behavior: UserBehavior): void {
     const { articleId, action, metadata } = behavior;
     let perf = this.performance.get(articleId);
@@ -319,6 +356,30 @@ class AnalyticsTracker {
       totalArticlesRead: userBehaviors.filter(b => b.action === 'view').length,
       engagementLevel: this.calculateUserEngagement(userBehaviors)
     };
+  }
+
+  async getAnalytics(): Promise<any> {
+    const totalBehaviors = this.behaviors.length;
+    const uniqueSessions = new Set(this.behaviors.map(b => b.sessionId)).size;
+    const totalPerformance = Array.from(this.performance.values());
+    
+    const analytics = {
+      overview: {
+        totalEvents: totalBehaviors,
+        uniqueSessions,
+        totalArticles: totalPerformance.length,
+        avgEngagementScore: totalPerformance.reduce((sum, p) => sum + p.engagementScore, 0) / totalPerformance.length || 0
+      },
+      topPerformingContent: totalPerformance
+        .sort((a, b) => b.engagementScore - a.engagementScore)
+        .slice(0, 10),
+      trendingContent: this.getTrendingContent(5),
+      recentActivity: this.behaviors
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        .slice(0, 50)
+    };
+
+    return analytics;
   }
 
   private calculateUserEngagement(behaviors: UserBehavior[]): 'low' | 'medium' | 'high' {

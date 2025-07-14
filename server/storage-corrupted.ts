@@ -131,7 +131,12 @@ export class DatabaseStorage implements IStorage {
   } = {}): Promise<ArticleWithCategory[]> {
     const { categoryId, featured, published = true, limit = 50, offset = 0, language = "en" } = options;
 
-    let query = db
+    const conditions = [];
+    if (published !== undefined) conditions.push(eq(articles.published, published));
+    if (featured !== undefined) conditions.push(eq(articles.featured, featured));
+    if (categoryId !== undefined) conditions.push(eq(articles.categoryId, categoryId));
+
+    const baseQuery = db
       .select({
         id: articles.id,
         slug: articles.slug,
@@ -166,14 +171,9 @@ export class DatabaseStorage implements IStorage {
       .from(articles)
       .leftJoin(categories, eq(articles.categoryId, categories.id));
 
-    const conditions = [];
-    if (published !== undefined) conditions.push(eq(articles.published, published));
-    if (featured !== undefined) conditions.push(eq(articles.featured, featured));
-    if (categoryId !== undefined) conditions.push(eq(articles.categoryId, categoryId));
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    const query = conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery;
 
     const results = await query
       .orderBy(desc(articles.publishedAt))

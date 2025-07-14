@@ -194,7 +194,13 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       const featured = req.query.featured === 'true';
       const lang = req.query.lang as string || 'en';
       
-      const articles = await storage.getArticles({ page, limit, category, featured, lang });
+      const articles = await storage.getArticles({ 
+        categoryId: category ? parseInt(category) : undefined,
+        featured, 
+        limit,
+        offset: (page - 1) * limit,
+        language: lang 
+      });
       
       // Track analytics
       analyticsTracker.trackEvent('articles_viewed', {
@@ -219,7 +225,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       const { slug } = req.params;
       const lang = req.query.lang as string || 'en';
       
-      const article = await storage.getArticleBySlug(slug, lang);
+      const article = await storage.getArticleBySlug(slug);
       if (!article) {
         return res.status(404).json({ error: "Article not found" });
       }
@@ -243,7 +249,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
   app.get("/api/categories", async (req, res) => {
     try {
       const lang = req.query.lang as string || 'en';
-      const categories = await storage.getCategories(lang);
+      const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -288,7 +294,20 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: "Search query is required" });
       }
       
-      const results = await storage.searchArticles(query, { page, limit, lang });
+      const allResults = await storage.searchArticles(query, lang);
+      
+      // Apply pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedResults = allResults.slice(startIndex, endIndex);
+      
+      const response = {
+        articles: paginatedResults,
+        total: allResults.length,
+        page,
+        limit,
+        totalPages: Math.ceil(allResults.length / limit)
+      };
       
       // Track analytics
       analyticsTracker.trackEvent('search_performed', {
@@ -296,12 +315,12 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
         lang,
         page,
         limit,
-        resultsCount: results.articles.length,
+        resultsCount: allResults.length,
         userAgent: req.headers['user-agent'],
         ip: req.ip
       });
       
-      res.json(results);
+      res.json(response);
     } catch (error) {
       console.error('Error performing search:', error);
       res.status(500).json({ error: "Search failed" });
@@ -317,7 +336,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       
       // Send welcome email
       try {
-        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.preferredLanguage);
+        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.language);
       } catch (emailError) {
         console.error('Failed to send welcome email:', emailError);
         // Don't fail the subscription if email fails
@@ -326,7 +345,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       // Track analytics
       analyticsTracker.trackEvent('newsletter_subscription', {
         email: validatedData.email,
-        language: validatedData.preferredLanguage,
+        language: validatedData.language,
         userAgent: req.headers['user-agent'],
         ip: req.ip
       });
@@ -350,7 +369,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       
       // Send notification email
       try {
-        await emailService.sendContactNotification(validatedData);
+        await emailService.sendContactFormEmail(validatedData);
       } catch (emailError) {
         console.error('Failed to send contact notification:', emailError);
       }
@@ -359,7 +378,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       analyticsTracker.trackEvent('contact_form_submitted', {
         name: validatedData.name,
         email: validatedData.email,
-        subject: validatedData.subject,
+        type: validatedData.type,
         userAgent: req.headers['user-agent'],
         ip: req.ip
       });

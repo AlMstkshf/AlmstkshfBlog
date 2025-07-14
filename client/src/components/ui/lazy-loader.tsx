@@ -91,7 +91,7 @@ export function withLazyLoading<P extends object>(
   return function LazyWrappedComponent(props: P) {
     return (
       <LazyLoader loadingComponent={loadingFallback}>
-        <LazyComponent {...props} />
+        <LazyComponent {...(props as P)} />
       </LazyLoader>
     );
   };

@@ -5,6 +5,7 @@ import {
   asyncHandler, 
   successResponse 
 } from "../errors";
+import { cacheService, CACHE_TTL, cacheInvalidation } from "../cache";
 
 export function createContactRoutes() {
   const router = Router();
@@ -35,6 +36,9 @@ export function createContactRoutes() {
     // Save to database
     const submission = await storage.submitContactForm(contactData);
     
+    // Invalidate contact submissions cache after new submission
+    cacheInvalidation.contact();
+    
     // Send email notification
     try {
       const emailSvc = await getEmailService();
@@ -62,7 +66,21 @@ export function createContactRoutes() {
     return requireAuth(req, res, () => {
       return requireAdmin(req, res, () => {
         return asyncHandler(async (req: Request, res: Response) => {
-          const submissions = await storage.getContactSubmissions();
+          const cacheKey = 'contact:submissions:all';
+          
+          const submissions = await cacheService.getOrSet(
+            cacheKey,
+            async () => {
+              return await storage.getContactSubmissions();
+            },
+            CACHE_TTL.CONTACT_SUBMISSIONS
+          );
+          
+          res.set({
+            'Cache-Control': 'private, max-age=300', // 5 minutes for admin data
+            'X-Cache': submissions === await storage.getContactSubmissions() ? 'MISS' : 'HIT'
+          });
+          
           successResponse(res, submissions, "Contact submissions retrieved successfully");
         })(req, res, next);
       });

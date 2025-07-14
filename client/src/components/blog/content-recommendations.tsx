@@ -57,7 +57,7 @@ export function ContentRecommendations({
           
           // Content similarity based on title keywords (20% weight)
           const currentTitle = language === "ar" ? article.titleAr : article.titleEn;
-          const titleWords = currentTitle.toLowerCase().split(/\s+/);
+          const titleWords = currentTitle?.toLowerCase().split(/\s+/) || [];
           const relevantWords = titleWords.filter(word => 
             word.length > 3 && 
             !['the', 'and', 'for', 'with', 'this', 'that', 'في', 'على', 'من', 'إلى'].includes(word)

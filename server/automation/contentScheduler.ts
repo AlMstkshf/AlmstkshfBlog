@@ -128,7 +128,7 @@ class ContentScheduler {
       published: true,
       featured: false,
       slug: this.generateSlug(post.title),
-      publishedAt: new Date().toISOString()
+      publishedAt: new Date()
     };
 
     await storage.createArticle(articleData);

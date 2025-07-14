@@ -15,10 +15,10 @@ interface N8NArticlePayload {
   published?: boolean;
   featured?: boolean;
   slug?: string;
-  metaTitle?: string;
-  metaDescription?: string;
-  keywords?: string;
-  canonicalUrl?: string;
+  metaDescriptionEn?: string;
+  metaDescriptionAr?: string;
+  authorImage?: string;
+  readingTime?: number;
   tags?: string[];
 }
 
@@ -45,7 +45,8 @@ class N8NAutomationService {
     try {
       await storage.createApiKey({
         serviceName: 'n8n_webhook',
-        apiKey: apiKey,
+        keyName: 'webhook_key',
+        keyValue: apiKey,
         description: 'N8N Automation Webhook',
         isActive: true
       });
@@ -62,7 +63,7 @@ class N8NAutomationService {
     // Check database for stored API keys
     try {
       const storedKey = await storage.getApiKey('n8n_webhook');
-      if (storedKey && storedKey.apiKey === apiKey && storedKey.isActive) {
+      if (storedKey && storedKey.keyValue === apiKey && storedKey.isActive) {
         this.validApiKeys.add(apiKey);
         return true;
       }
@@ -76,10 +77,6 @@ class N8NAutomationService {
   async createArticleFromWebhook(payload: N8NArticlePayload): Promise<any> {
     // Generate slug if not provided
     const slug = payload.slug || this.generateSlug(payload.titleEn || payload.titleAr || '');
-    
-    // Generate canonical URL if not provided
-    const canonicalUrl = payload.canonicalUrl || 
-      `${process.env.SITE_URL || 'https://almstkshf.com'}/en/blog/${slug}`;
 
     const articleData: InsertArticle = {
       titleEn: payload.titleEn,
@@ -90,14 +87,15 @@ class N8NAutomationService {
       excerptAr: payload.excerptAr || null,
       categoryId: payload.categoryId,
       authorName: payload.authorName,
+      authorImage: payload.authorImage || null,
       featuredImage: payload.featuredImage || null,
       published: payload.published || false,
       featured: payload.featured || false,
       slug: slug,
-      metaTitle: payload.metaTitle || payload.titleEn,
-      metaDescription: payload.metaDescription || payload.excerptEn,
-      keywords: payload.keywords || null,
-      canonicalUrl: canonicalUrl
+      metaDescriptionEn: payload.metaDescriptionEn || payload.excerptEn || null,
+      metaDescriptionAr: payload.metaDescriptionAr || payload.excerptAr || null,
+      readingTime: payload.readingTime || null,
+      publishedAt: payload.published ? new Date() : null
     };
 
     return await storage.createArticle(articleData);
@@ -115,14 +113,17 @@ class N8NAutomationService {
     if (payload.excerptAr !== undefined) updateData.excerptAr = payload.excerptAr;
     if (payload.categoryId !== undefined) updateData.categoryId = payload.categoryId;
     if (payload.authorName !== undefined) updateData.authorName = payload.authorName;
+    if (payload.authorImage !== undefined) updateData.authorImage = payload.authorImage;
     if (payload.featuredImage !== undefined) updateData.featuredImage = payload.featuredImage;
-    if (payload.published !== undefined) updateData.published = payload.published;
+    if (payload.published !== undefined) {
+      updateData.published = payload.published;
+      updateData.publishedAt = payload.published ? new Date() : null;
+    }
     if (payload.featured !== undefined) updateData.featured = payload.featured;
     if (payload.slug !== undefined) updateData.slug = payload.slug;
-    if (payload.metaTitle !== undefined) updateData.metaTitle = payload.metaTitle;
-    if (payload.metaDescription !== undefined) updateData.metaDescription = payload.metaDescription;
-    if (payload.keywords !== undefined) updateData.keywords = payload.keywords;
-    if (payload.canonicalUrl !== undefined) updateData.canonicalUrl = payload.canonicalUrl;
+    if (payload.metaDescriptionEn !== undefined) updateData.metaDescriptionEn = payload.metaDescriptionEn;
+    if (payload.metaDescriptionAr !== undefined) updateData.metaDescriptionAr = payload.metaDescriptionAr;
+    if (payload.readingTime !== undefined) updateData.readingTime = payload.readingTime;
 
     return await storage.updateArticle(articleId, updateData);
   }

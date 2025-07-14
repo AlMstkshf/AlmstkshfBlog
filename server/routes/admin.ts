@@ -42,7 +42,7 @@ export function createAdminRoutes() {
   });
 
   // Admin Settings API
-  router.get("/settings", asyncHandler(async (req, res) => {
+  router.get("/settings", asyncHandler(async (req: Request, res: Response) => {
     const settings = {
       publishingEnabled: await storage.getAutomationSetting("publishingEnabled") ?? true,
       publishingDays: ["monday", "friday"],
@@ -67,7 +67,7 @@ export function createAdminRoutes() {
     successResponse(res, settings, "Admin settings retrieved successfully");
   }));
 
-  router.post("/settings", asyncHandler(async (req, res) => {
+  router.post("/settings", asyncHandler(async (req: Request, res: Response) => {
     const settings = req.body;
     
     if (!settings || typeof settings !== 'object') {
@@ -85,7 +85,7 @@ export function createAdminRoutes() {
   }));
 
   // Content analysis endpoint (AI disabled)
-  router.post("/fix-arabic-content", asyncHandler(async (req, res) => {
+  router.post("/fix-arabic-content", asyncHandler(async (req: Request, res: Response) => {
     const { contentFixer } = await import('../automation/contentFixer-disabled');
     const results = await contentFixer.fixIncompleteArabicContent();
     
@@ -102,14 +102,14 @@ export function createAdminRoutes() {
   }));
 
   // Quick content analysis endpoint
-  router.get("/content-analysis", asyncHandler(async (req, res) => {
+  router.get("/content-analysis", asyncHandler(async (req: Request, res: Response) => {
     const { contentFixer } = await import('../automation/contentFixer-disabled');
     const analysis = await contentFixer.fixIncompleteArabicContent();
     successResponse(res, analysis, "Content analysis retrieved successfully");
   }));
 
   // API Key management routes
-  router.get("/api-keys", asyncHandler(async (req, res) => {
+  router.get("/api-keys", asyncHandler(async (req: Request, res: Response) => {
     const apiKeys = await storage.getApiKeys();
     // Don't expose actual key values in response, only metadata
     const safeApiKeys = apiKeys.map(key => ({
@@ -119,7 +119,7 @@ export function createAdminRoutes() {
     successResponse(res, safeApiKeys, "API keys retrieved successfully");
   }));
 
-  router.post("/api-keys", asyncHandler(async (req, res) => {
+  router.post("/api-keys", asyncHandler(async (req: Request, res: Response) => {
     const apiKeyData = insertApiKeySchema.parse(req.body);
     const newApiKey = await storage.createApiKey(apiKeyData);
     
@@ -130,7 +130,7 @@ export function createAdminRoutes() {
     successResponse(res, safeApiKey, "API key created successfully", 201);
   }));
 
-  router.put("/api-keys/:id", asyncHandler(async (req, res) => {
+  router.put("/api-keys/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       throw new ValidationError("Invalid API key ID");
@@ -146,7 +146,7 @@ export function createAdminRoutes() {
     successResponse(res, safeApiKey, "API key updated successfully");
   }));
 
-  router.delete("/api-keys/:id", asyncHandler(async (req, res) => {
+  router.delete("/api-keys/:id", asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       throw new ValidationError("Invalid API key ID");
@@ -157,7 +157,7 @@ export function createAdminRoutes() {
   }));
 
   // Admin password change endpoint
-  router.post("/change-password", asyncHandler(async (req, res) => {
+  router.post("/change-password", asyncHandler(async (req: Request, res: Response) => {
     const { currentPassword, newPassword } = req.body;
     
     if (!currentPassword || !newPassword) {
@@ -188,7 +188,7 @@ export function createAdminRoutes() {
   }));
 
   // Cache monitoring endpoints
-  router.get("/cache/stats", asyncHandler(async (req, res) => {
+  router.get("/cache/stats", asyncHandler(async (req: Request, res: Response) => {
     const cacheStats = cacheService.getStats();
     const performanceStats = getPerformanceStats();
     
@@ -208,7 +208,7 @@ export function createAdminRoutes() {
     successResponse(res, combinedStats, "Cache and performance statistics retrieved successfully");
   }));
 
-  router.post("/cache/clear", asyncHandler(async (req, res) => {
+  router.post("/cache/clear", asyncHandler(async (req: Request, res: Response) => {
     const { pattern } = req.body;
     
     let clearedCount = 0;
@@ -246,7 +246,7 @@ export function createAdminRoutes() {
     successResponse(res, result, `Cache cleared successfully${pattern ? ` for pattern: ${pattern}` : ''}`);
   }));
 
-  router.post("/performance/reset", asyncHandler(async (req, res) => {
+  router.post("/performance/reset", asyncHandler(async (req: Request, res: Response) => {
     resetPerformanceStats();
     
     const result = {
@@ -258,7 +258,7 @@ export function createAdminRoutes() {
   }));
 
   // System health endpoint
-  router.get("/system/health", asyncHandler(async (req, res) => {
+  router.get("/system/health", asyncHandler(async (req: Request, res: Response) => {
     const cacheStats = cacheService.getStats();
     const performanceStats = getPerformanceStats();
     const memoryUsage = process.memoryUsage();
@@ -293,7 +293,27 @@ export function createAdminRoutes() {
                         healthScore >= 60 ? 'good' : 
                         healthScore >= 40 ? 'fair' : 'poor';
     
-    const systemHealth = {
+    const systemHealth: {
+      score: number;
+      status: string;
+      uptime: number;
+      memory: {
+        usage: number;
+        total: number;
+        percentage: number;
+      };
+      cache: {
+        hitRate: number;
+        entries: number;
+        memoryUsage: number;
+      };
+      performance: {
+        averageResponseTime: number;
+        totalRequests: number;
+        slowRequestPercentage: number;
+      };
+      recommendations: string[];
+    } = {
       score: healthScore,
       status: healthStatus,
       uptime: process.uptime(),

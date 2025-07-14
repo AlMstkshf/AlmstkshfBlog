@@ -41,7 +41,7 @@ export function useParallelBlogData(config: Partial<ParallelLoadingConfig> = {})
       {
         queryKey: ['/api/categories'],
         staleTime: finalConfig.staleTime * 2, // Categories change less frequently
-        cacheTime: finalConfig.cacheTime * 2,
+        gcTime: finalConfig.cacheTime * 2,
         refetchOnWindowFocus: false,
         enabled: finalConfig.enableParallel,
       },
@@ -80,7 +80,7 @@ export function useArticlePrefetch(articleId?: number, categoryId?: number) {
       {
         queryKey: ['/api/articles', { categoryId, limit: 6 }],
         staleTime: 3 * 60 * 1000,
-        cacheTime: 5 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
         enabled: !!categoryId,
         refetchOnWindowFocus: false,
       },
@@ -88,7 +88,7 @@ export function useArticlePrefetch(articleId?: number, categoryId?: number) {
       {
         queryKey: ['/api/categories'],
         staleTime: 10 * 60 * 1000,
-        cacheTime: 15 * 60 * 1000,
+        gcTime: 15 * 60 * 1000,
         enabled: !!categoryId,
         refetchOnWindowFocus: false,
       },
@@ -112,17 +112,17 @@ export function useCacheOptimization() {
     // Short-lived cache for real-time data
     realTimeConfig: {
       staleTime: 30 * 1000, // 30 seconds
-      cacheTime: 2 * 60 * 1000, // 2 minutes
+      gcTime: 2 * 60 * 1000, // 2 minutes
     },
     // Medium cache for semi-static content
     contentConfig: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 15 * 60 * 1000, // 15 minutes
+      gcTime: 15 * 60 * 1000, // 15 minutes
     },
     // Long-lived cache for static data
     staticConfig: {
       staleTime: 30 * 60 * 1000, // 30 minutes
-      cacheTime: 60 * 60 * 1000, // 1 hour
+      gcTime: 60 * 60 * 1000, // 1 hour
     },
   };
 }

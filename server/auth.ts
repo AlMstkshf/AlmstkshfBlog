@@ -3,19 +3,23 @@ import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
 
 // JWT configuration - MUST be set in environment variables
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Shorter access token lifetime
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+const JWT_SECRET_ENV = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET_ENV = process.env.JWT_REFRESH_SECRET;
 
 // Validate required environment variables
-if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+if (!JWT_SECRET_ENV || !JWT_REFRESH_SECRET_ENV) {
   throw new Error('JWT_SECRET and JWT_REFRESH_SECRET environment variables are required');
 }
 
-if (JWT_SECRET.length < 32 || JWT_REFRESH_SECRET.length < 32) {
+if (JWT_SECRET_ENV.length < 32 || JWT_REFRESH_SECRET_ENV.length < 32) {
   throw new Error('JWT secrets must be at least 32 characters long');
 }
+
+// Now we can safely assign to typed constants
+const JWT_SECRET: string = JWT_SECRET_ENV;
+const JWT_REFRESH_SECRET: string = JWT_REFRESH_SECRET_ENV;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Shorter access token lifetime
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
 // Admin credentials - MUST be set in environment variables
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
@@ -68,19 +72,19 @@ export function generateTokens(user: AuthUser): { accessToken: string; refreshTo
     type: 'refresh'
   };
 
-  const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET!, {
+  const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'almstkshf-blog',
     audience: 'almstkshf-admin',
     algorithm: 'HS256'
-  });
+  } as jwt.SignOptions);
 
-  const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET!, {
+  const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET, {
     expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     issuer: 'almstkshf-blog',
     audience: 'almstkshf-admin',
     algorithm: 'HS256'
-  });
+  } as jwt.SignOptions);
 
   return { accessToken, refreshToken };
 }
@@ -116,15 +120,15 @@ export async function authenticateAdmin(usernameOrEmail: string, password: strin
     return null;
   }
 
-  const isValidPassword = await verifyPassword(password, ADMIN_PASSWORD_HASH);
+  const isValidPassword = await verifyPassword(password, ADMIN_PASSWORD_HASH!);
   if (!isValidPassword) {
     return null;
   }
 
   return {
     id: 'admin-1',
-    username: ADMIN_USERNAME,
-    email: ADMIN_EMAIL,
+    username: ADMIN_USERNAME!,
+    email: ADMIN_EMAIL!,
     role: 'admin'
   };
 }
@@ -156,6 +160,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   req.user = {
     id: payload.userId,
     username: payload.username,
+    email: ADMIN_EMAIL!, // Add email property from environment
     role: payload.role
   };
 

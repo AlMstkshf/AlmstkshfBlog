@@ -161,6 +161,7 @@ export default function BlogArticle() {
           content={content || ""}
           readingTime={readingTime}
           language={language}
+          isRTL={isRTL}
           canonicalUrl={canonicalUrl}
           absoluteImageUrl={absoluteImageUrl}
           publishedDate={publishedDate}
@@ -199,7 +200,7 @@ export default function BlogArticle() {
 
         {/* Article Content */}
         <MemoizedArticleContent
-          content={content}
+          content={content || null}
           isRTL={isRTL}
           language={language}
           articleSlug={articleSlug || ""}

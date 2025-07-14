@@ -329,7 +329,9 @@ export function createDownloadsRoutes() {
               fileName: req.file.filename,
               originalFileName: req.file.originalname,
               filePath: req.file.path,
-              fileSize: req.file.size,
+              fileSize: `${Math.round(req.file.size / 1024)} KB`, // Convert to readable format
+              fileSizeBytes: req.file.size, // Required field: size in bytes
+              mimeType: req.file.mimetype, // Required field: MIME type
               featured: featured === 'true',
               tags: parsedTags
             };

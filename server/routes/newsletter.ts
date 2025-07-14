@@ -5,6 +5,7 @@ import {
   asyncHandler, 
   successResponse 
 } from "../errors";
+import { cacheService, CACHE_TTL, cacheInvalidation } from "../cache";
 
 export function createNewsletterRoutes() {
   const router = Router();
@@ -33,6 +34,9 @@ export function createNewsletterRoutes() {
     const subscriberData = insertNewsletterSubscriberSchema.parse(req.body);
     const subscriber = await storage.subscribeToNewsletter(subscriberData);
     
+    // Invalidate newsletter subscribers cache after new subscription
+    cacheInvalidation.newsletter();
+    
     // Automatically send welcome email
     try {
       const emailAuto = await getEmailAutomation();
@@ -56,7 +60,21 @@ export function createNewsletterRoutes() {
     return requireAuth(req, res, () => {
       return requireAdmin(req, res, () => {
         return asyncHandler(async (req: Request, res: Response) => {
-          const subscribers = await storage.getNewsletterSubscribers();
+          const cacheKey = 'newsletter:subscribers:all';
+          
+          const subscribers = await cacheService.getOrSet(
+            cacheKey,
+            async () => {
+              return await storage.getNewsletterSubscribers();
+            },
+            CACHE_TTL.NEWSLETTER_SUBSCRIBERS
+          );
+          
+          res.set({
+            'Cache-Control': 'private, max-age=300', // 5 minutes for admin data
+            'X-Cache': subscribers === await storage.getNewsletterSubscribers() ? 'MISS' : 'HIT'
+          });
+          
           successResponse(res, subscribers, "Subscribers retrieved successfully");
         })(req, res, next);
       });

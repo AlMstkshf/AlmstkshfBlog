@@ -59,7 +59,7 @@ export class CloudStorageService {
         }
       }
     } catch (error) {
-      console.warn("⚠️  Could not create local directories (serverless environment?):", error.message);
+      console.warn("⚠️  Could not create local directories (serverless environment?):", error instanceof Error ? error.message : String(error));
       // Don't throw error, just log warning
     }
   }
@@ -125,8 +125,8 @@ export class CloudStorageService {
           }
         });
         
-        // Generate public URL
-        const url = await this.store!.getURL(key);
+        // Generate public URL for Netlify Blobs
+        const url = `${process.env.NETLIFY_BLOBS_URL || 'https://your-site.netlify.app/.netlify/blobs/uploads'}/${key}`;
         
         return {
           filename,
@@ -257,8 +257,8 @@ export class CloudStorageService {
         // Local storage implementation - return relative URL
         return `/uploads/${key}`;
       } else {
-        // Netlify Blobs implementation
-        return await this.store!.getURL(key);
+        // Netlify Blobs implementation - construct URL
+        return `${process.env.NETLIFY_BLOBS_URL || 'https://your-site.netlify.app/.netlify/blobs/uploads'}/${key}`;
       }
     } catch (error) {
       console.error('Error getting file URL:', error);

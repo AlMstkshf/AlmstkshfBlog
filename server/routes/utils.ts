@@ -251,7 +251,7 @@ Crawl-delay: 1`;
   });
 
   // Automation test endpoint
-  router.post("/automation/test", asyncHandler(async (req, res) => {
+  router.post("/automation/test", asyncHandler(async (req: Request, res: Response) => {
     // Test API connectivity
     const newsDataKey = process.env.NEWSDATA_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -269,7 +269,7 @@ Crawl-delay: 1`;
   }));
 
   // Email Testing and Reports API
-  router.post("/email/test", asyncHandler(async (req, res) => {
+  router.post("/email/test", asyncHandler(async (req: Request, res: Response) => {
     const { email, language = 'en' } = req.body;
     
     if (!email) {
@@ -291,14 +291,14 @@ Crawl-delay: 1`;
     successResponse(res, result, "Test email sent successfully");
   }));
 
-  router.get("/reports/weekly", asyncHandler(async (req, res) => {
+  router.get("/reports/weekly", asyncHandler(async (req: Request, res: Response) => {
     const emailAuto = await getEmailAutomation();
     const reportData = await emailAuto.generateWeeklyReport();
     const parsedData = JSON.parse(reportData);
     successResponse(res, parsedData, "Weekly report generated successfully");
   }));
 
-  router.post("/reports/weekly/send", asyncHandler(async (req, res) => {
+  router.post("/reports/weekly/send", asyncHandler(async (req: Request, res: Response) => {
     const { email = 'rased@almstkshf.com' } = req.body;
 
     if (!process.env.SENDGRID_API_KEY) {

@@ -494,46 +494,11 @@ function ArticleEditorContent() {
               <CardTitle>SEO & Meta Tags</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="metaTitle">Meta Title</Label>
-                <Input
-                  id="metaTitle"
-                  value={formData.metaTitle}
-                  onChange={(e) => setFormData(prev => ({ ...prev, metaTitle: e.target.value }))}
-                  placeholder="SEO optimized title (leave empty to auto-generate)"
-                />
-              </div>
+
               
-              <div>
-                <Label htmlFor="metaDescription">Meta Description</Label>
-                <Textarea
-                  id="metaDescription"
-                  value={formData.metaDescription}
-                  onChange={(e) => setFormData(prev => ({ ...prev, metaDescription: e.target.value }))}
-                  placeholder="SEO description for search engines"
-                  rows={3}
-                />
-              </div>
+
               
-              <div>
-                <Label htmlFor="keywords">Keywords</Label>
-                <Input
-                  id="keywords"
-                  value={formData.keywords}
-                  onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
-                  placeholder="SEO keywords, separated by commas"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="canonicalUrl">Canonical URL</Label>
-                <Input
-                  id="canonicalUrl"
-                  value={formData.canonicalUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, canonicalUrl: e.target.value }))}
-                  placeholder="Canonical URL (leave empty to auto-generate)"
-                />
-              </div>
+
             </CardContent>
           </Card>
         </div>
