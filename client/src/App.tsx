@@ -31,6 +31,7 @@ import CrisisManagement from "@/pages/services/crisis-management";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import AutomationDashboard from "@/components/admin/automation-dashboard";
+import { PerformanceDashboard } from "@/pages/admin/PerformanceDashboard";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/admin/settings" component={() => <ProtectedRoute requiredRole="admin"><AdminSettings /></ProtectedRoute>} />
       <Route path="/admin/content-strategy" component={() => <ProtectedRoute requiredRole="admin"><ContentStrategyPage /></ProtectedRoute>} />
       <Route path="/admin/automation" component={() => <ProtectedRoute requiredRole="admin"><AutomationDashboard /></ProtectedRoute>} />
+      <Route path="/admin/performance" component={() => <ProtectedRoute requiredRole="admin"><PerformanceDashboard /></ProtectedRoute>} />
       <Route path="/admin/downloads" component={() => <ProtectedRoute requiredRole="admin"><AdminDownloads /></ProtectedRoute>} />
       <Route path="/admin/articles" component={() => <Redirect to="/admin/dashboard?tab=articles" />} />
       <Route path="/admin/articles/new" component={() => <ProtectedRoute requiredRole="admin"><ArticleEditor /></ProtectedRoute>} />

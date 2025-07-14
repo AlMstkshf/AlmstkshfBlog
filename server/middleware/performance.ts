@@ -99,8 +99,10 @@ export const responseTimeMiddleware = (req: Request, res: Response, next: NextFu
       console.warn(`Slow request detected: ${endpoint} took ${responseTime}ms`);
     }
     
-    // Add response time header for debugging
-    res.setHeader('X-Response-Time', `${responseTime}ms`);
+    // Add response time header for debugging (only if headers haven't been sent)
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${responseTime}ms`);
+    }
     
     // Call original end method and return its result
     return originalEnd(chunk, encoding, cb);

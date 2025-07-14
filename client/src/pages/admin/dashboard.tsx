@@ -8,7 +8,7 @@ import { Input } from "../../components/ui/input";
 import { Skeleton } from "../../components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../components/ui/alert-dialog";
 import { useState, useMemo, useCallback } from "react";
-import { Plus, Edit, Trash2, Users, FileText, TrendingUp, Settings, Zap, Search, Tag, Globe, Clock, Download as DownloadIcon, FolderOpen, Brain, LogOut, User, Loader2, AlertTriangle, X, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, Users, FileText, TrendingUp, Settings, Zap, Search, Tag, Globe, Clock, Download as DownloadIcon, FolderOpen, Brain, LogOut, User, Loader2, AlertTriangle, X, RefreshCw, Activity } from "lucide-react";
 // TODO: Replace with the correct import path or define the types locally if the shared schema does not exist.
 export type ArticleWithCategory = {
   id: number;
@@ -299,6 +299,12 @@ function AdminDashboardContent() {
                 <Button variant="outline" className="flex items-center justify-center space-x-2 w-full" title="Content Strategy">
                   <Brain className="w-4 h-4" />
                   <span className="hidden sm:inline">Strategy</span>
+                </Button>
+              </Link>
+              <Link href="/admin/performance">
+                <Button variant="outline" className="flex items-center justify-center space-x-2 w-full" title="Performance">
+                  <Activity className="w-4 h-4" />
+                  <span className="hidden sm:inline">Performance</span>
                 </Button>
               </Link>
               <Link href="/admin/settings">

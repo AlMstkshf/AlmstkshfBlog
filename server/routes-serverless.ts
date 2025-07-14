@@ -336,7 +336,7 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       
       // Send welcome email
       try {
-        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.language);
+        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.language || 'en');
       } catch (emailError) {
         console.error('Failed to send welcome email:', emailError);
         // Don't fail the subscription if email fails
@@ -369,7 +369,11 @@ export async function registerServerlessRoutes(app: Express): Promise<void> {
       
       // Send notification email
       try {
-        await emailService.sendContactFormEmail(validatedData);
+        await emailService.sendContactFormEmail({
+          ...validatedData,
+          company: validatedData.company || undefined,
+          language: validatedData.language || 'en'
+        });
       } catch (emailError) {
         console.error('Failed to send contact notification:', emailError);
       }

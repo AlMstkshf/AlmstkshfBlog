@@ -8318,7 +8318,12 @@ var init_schema2 = __esm({
       descriptionAr: text("description_ar"),
       iconName: varchar("icon_name", { length: 50 }),
       createdAt: timestamp("created_at").defaultNow()
-    });
+    }, (table) => [
+      // Performance indexes for categories
+      index("idx_categories_slug").on(table.slug),
+      index("idx_categories_name_en").on(table.nameEn),
+      index("idx_categories_name_ar").on(table.nameAr)
+    ]);
     articles = pgTable("articles", {
       id: serial("id").primaryKey(),
       slug: varchar("slug", { length: 200 }).notNull().unique(),
@@ -8363,7 +8368,13 @@ var init_schema2 = __esm({
       // 'en' or 'ar'
       subscribedAt: timestamp("subscribed_at").defaultNow(),
       active: boolean("active").default(true)
-    });
+    }, (table) => [
+      // Performance indexes for newsletter subscribers
+      index("idx_newsletter_email").on(table.email),
+      index("idx_newsletter_active").on(table.active),
+      index("idx_newsletter_subscribed_at").on(table.subscribedAt),
+      index("idx_newsletter_language").on(table.language)
+    ]);
     contactSubmissions = pgTable("contact_submissions", {
       id: serial("id").primaryKey(),
       name: varchar("name", { length: 100 }).notNull(),
@@ -8375,7 +8386,14 @@ var init_schema2 = __esm({
       language: varchar("language", { length: 2 }).notNull().default("en"),
       submittedAt: timestamp("submitted_at").defaultNow(),
       responded: boolean("responded").default(false)
-    });
+    }, (table) => [
+      // Performance indexes for contact submissions
+      index("idx_contact_email").on(table.email),
+      index("idx_contact_type").on(table.type),
+      index("idx_contact_responded").on(table.responded),
+      index("idx_contact_submitted_at").on(table.submittedAt),
+      index("idx_contact_language").on(table.language)
+    ]);
     automationSettings = pgTable("automation_settings", {
       id: serial("id").primaryKey(),
       settingKey: varchar("setting_key", { length: 100 }).notNull().unique(),
@@ -8393,7 +8411,12 @@ var init_schema2 = __esm({
       lastUsed: timestamp("last_used"),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
-    });
+    }, (table) => [
+      // Performance indexes for API keys
+      index("idx_api_keys_service_name").on(table.serviceName),
+      index("idx_api_keys_is_active").on(table.isActive),
+      index("idx_api_keys_last_used").on(table.lastUsed)
+    ]);
     downloads = pgTable("downloads", {
       id: serial("id").primaryKey(),
       title: varchar("title", { length: 255 }).notNull(),
@@ -8416,7 +8439,18 @@ var init_schema2 = __esm({
       uploadedAt: timestamp("uploaded_at").defaultNow(),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
-    });
+    }, (table) => [
+      // Performance indexes for downloads
+      index("idx_downloads_category").on(table.category),
+      index("idx_downloads_file_type").on(table.fileType),
+      index("idx_downloads_featured").on(table.featured),
+      index("idx_downloads_uploaded_at").on(table.uploadedAt),
+      index("idx_downloads_download_count").on(table.downloadCount),
+      // Composite indexes for common query patterns
+      index("idx_downloads_category_featured").on(table.category, table.featured),
+      index("idx_downloads_file_type_featured").on(table.fileType, table.featured),
+      index("idx_downloads_featured_uploaded_at").on(table.featured, table.uploadedAt)
+    ]);
     categoriesRelations = relations(categories, ({ many }) => ({
       articles: many(articles)
     }));
@@ -25328,7 +25362,7 @@ var init_cloud_storage = __esm({
             }
           }
         } catch (error) {
-          console.warn("\u26A0\uFE0F  Could not create local directories (serverless environment?):", error.message);
+          console.warn("\u26A0\uFE0F  Could not create local directories (serverless environment?):", error instanceof Error ? error.message : String(error));
         }
       }
       /**
@@ -25375,7 +25409,7 @@ var init_cloud_storage = __esm({
                 uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
               }
             });
-            const url = await this.store.getURL(key);
+            const url = `${process.env.NETLIFY_BLOBS_URL || "https://your-site.netlify.app/.netlify/blobs/uploads"}/${key}`;
             return {
               filename,
               originalName,
@@ -25487,7 +25521,7 @@ var init_cloud_storage = __esm({
           if (this.useLocalStorage) {
             return `/uploads/${key}`;
           } else {
-            return await this.store.getURL(key);
+            return `${process.env.NETLIFY_BLOBS_URL || "https://your-site.netlify.app/.netlify/blobs/uploads"}/${key}`;
           }
         } catch (error) {
           console.error("Error getting file URL:", error);
@@ -25551,6 +25585,10 @@ var DatabaseStorage = class {
   }
   async getArticles(options = {}) {
     const { categoryId, featured, published = true, limit = 50, offset = 0, language = "en" } = options;
+    const conditions = [];
+    if (published !== void 0) conditions.push(eq(articles.published, published));
+    if (featured !== void 0) conditions.push(eq(articles.featured, featured));
+    if (categoryId !== void 0) conditions.push(eq(articles.categoryId, categoryId));
     let query = db.select({
       id: articles.id,
       slug: articles.slug,
@@ -25581,11 +25619,7 @@ var DatabaseStorage = class {
         iconName: categories.iconName,
         createdAt: categories.createdAt
       }
-    }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id));
-    const conditions = [];
-    if (published !== void 0) conditions.push(eq(articles.published, published));
-    if (featured !== void 0) conditions.push(eq(articles.featured, featured));
-    if (categoryId !== void 0) conditions.push(eq(articles.categoryId, categoryId));
+    }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).$dynamic();
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
@@ -25594,7 +25628,12 @@ var DatabaseStorage = class {
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
+      content: "",
       // Content is excluded from listing for performance
+      contentEn: "",
+      // Required for ArticleWithCategory compatibility
+      contentAr: "",
+      // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn
     }));
   }
@@ -25651,17 +25690,16 @@ var DatabaseStorage = class {
         console.warn("Invalid cursor provided, ignoring:", error);
       }
     }
-    let countQuery = db.select({ count: sql`count(*)` }).from(articles);
-    if (conditions.length > 0) {
-      const countConditions = conditions.filter(
-        (condition) => !condition.toString().includes("publishedAt") || !condition.toString().includes("id")
-      );
-      if (countConditions.length > 0) {
-        countQuery = countQuery.where(and(...countConditions));
-      }
+    const countConditions = conditions.filter((condition) => {
+      const conditionStr = condition?.toString() || "";
+      return !conditionStr.includes("publishedAt") && !conditionStr.includes("id");
+    });
+    let countQuery = db.select({ count: sql`count(*)` }).from(articles).$dynamic();
+    if (countConditions.length > 0) {
+      countQuery = countQuery.where(and(...countConditions));
     }
     const [{ count: total }] = await countQuery;
-    let query = db.select({
+    let baseQuery = db.select({
       id: articles.id,
       slug: articles.slug,
       titleEn: articles.titleEn,
@@ -25691,29 +25729,29 @@ var DatabaseStorage = class {
         iconName: categories.iconName,
         createdAt: categories.createdAt
       }
-    }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id));
+    }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).$dynamic();
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      baseQuery = baseQuery.where(and(...conditions));
     }
+    let results;
     if (sortBy === "publishedAt") {
-      query = query.orderBy(
+      results = await baseQuery.orderBy(
         sortOrder === "desc" ? desc(articles.publishedAt) : asc(articles.publishedAt),
         sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
         // Secondary sort for consistency
-      );
+      ).limit(limit + 1).offset(cursor ? 0 : offset);
     } else if (sortBy === "createdAt") {
-      query = query.orderBy(
+      results = await baseQuery.orderBy(
         sortOrder === "desc" ? desc(articles.createdAt) : asc(articles.createdAt),
         sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
-      );
+      ).limit(limit + 1).offset(cursor ? 0 : offset);
     } else if (sortBy === "id") {
-      query = query.orderBy(
+      results = await baseQuery.orderBy(
         sortOrder === "desc" ? desc(articles.id) : asc(articles.id)
-      );
+      ).limit(limit + 1).offset(cursor ? 0 : offset);
     } else {
-      query = query.orderBy(desc(articles.publishedAt), desc(articles.id));
+      results = await baseQuery.orderBy(desc(articles.publishedAt), desc(articles.id)).limit(limit + 1).offset(cursor ? 0 : offset);
     }
-    const results = await query.limit(limit + 1).offset(cursor ? 0 : offset);
     const hasNext = results.length > limit;
     const articlesData = hasNext ? results.slice(0, limit) : results;
     let nextCursor;
@@ -25729,6 +25767,12 @@ var DatabaseStorage = class {
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
+      content: "",
+      // Empty content for list view performance
+      contentEn: "",
+      // Required for ArticleWithCategory compatibility
+      contentAr: "",
+      // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn
     }));
     return {
@@ -25862,7 +25906,13 @@ var DatabaseStorage = class {
     }
   }
   async searchArticles(query, language = "en") {
-    const searchTerm = `%${query}%`;
+    if (!query || typeof query !== "string") {
+      return [];
+    }
+    const sanitizedQuery = query.trim().slice(0, 100);
+    if (sanitizedQuery.length === 0) {
+      return [];
+    }
     const results = await db.select({
       id: articles.id,
       slug: articles.slug,
@@ -25870,8 +25920,7 @@ var DatabaseStorage = class {
       titleAr: articles.titleAr,
       excerptEn: articles.excerptEn,
       excerptAr: articles.excerptAr,
-      contentEn: articles.contentEn,
-      contentAr: articles.contentAr,
+      // Exclude content from search results for performance
       metaDescriptionEn: articles.metaDescriptionEn,
       metaDescriptionAr: articles.metaDescriptionAr,
       featuredImage: articles.featuredImage,
@@ -25898,20 +25947,30 @@ var DatabaseStorage = class {
       and(
         eq(articles.published, true),
         or(
-          ilike(articles.titleEn, searchTerm),
-          ilike(articles.titleAr, searchTerm),
-          ilike(articles.contentEn, searchTerm),
-          ilike(articles.contentAr, searchTerm),
-          ilike(categories.nameEn, searchTerm),
-          ilike(categories.nameAr, searchTerm)
+          // Prioritize title and excerpt matches for better performance
+          ilike(articles.titleEn, `%${sanitizedQuery}%`),
+          ilike(articles.titleAr, `%${sanitizedQuery}%`),
+          ilike(articles.excerptEn, `%${sanitizedQuery}%`),
+          ilike(articles.excerptAr, `%${sanitizedQuery}%`),
+          ilike(categories.nameEn, `%${sanitizedQuery}%`),
+          ilike(categories.nameAr, `%${sanitizedQuery}%`)
         )
       )
-    ).orderBy(desc(articles.publishedAt)).limit(50);
+    ).orderBy(
+      // Order by featured first, then by publish date for better relevance
+      desc(articles.featured),
+      desc(articles.publishedAt)
+    ).limit(30);
     return results.map((article) => ({
       ...article,
       title: language === "ar" ? article.titleAr || article.titleEn : article.titleEn,
       excerpt: language === "ar" ? article.excerptAr || article.excerptEn : article.excerptEn,
-      content: language === "ar" ? article.contentAr || article.contentEn : article.contentEn,
+      content: "",
+      // Don't include content in search results for performance
+      contentEn: "",
+      // Required for ArticleWithCategory compatibility
+      contentAr: "",
+      // Required for ArticleWithCategory compatibility
       metaDescription: language === "ar" ? article.metaDescriptionAr || article.metaDescriptionEn : article.metaDescriptionEn
     }));
   }
@@ -25981,7 +26040,8 @@ var DatabaseStorage = class {
   }
   // Downloads operations
   async getDownloads(options = {}) {
-    let query = db.select().from(downloads);
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
     const conditions = [];
     if (options.category) {
       conditions.push(eq(downloads.category, options.category));
@@ -25992,17 +26052,17 @@ var DatabaseStorage = class {
     if (options.featured !== void 0) {
       conditions.push(eq(downloads.featured, options.featured));
     }
+    let query = db.select().from(downloads).$dynamic();
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
-    query = query.orderBy(desc(downloads.featured), desc(downloads.uploadedAt));
-    if (options.limit) {
-      query = query.limit(options.limit);
-    }
-    if (options.offset) {
-      query = query.offset(options.offset);
-    }
-    return await query;
+    const results = await query.orderBy(
+      desc(downloads.featured),
+      desc(downloads.uploadedAt),
+      desc(downloads.downloadCount)
+      // Add download count for popularity
+    ).limit(limit).offset(offset);
+    return results;
   }
   async getDownloadById(id) {
     const [download] = await db.select().from(downloads).where(eq(downloads.id, id)).limit(1);
@@ -26021,6 +26081,116 @@ var DatabaseStorage = class {
   }
   async incrementDownloadCount(id) {
     await db.update(downloads).set({ downloadCount: sql`${downloads.downloadCount} + 1` }).where(eq(downloads.id, id));
+  }
+  // SEO operations
+  async generateSitemap() {
+    try {
+      const publishedArticles = await db.select({
+        slug: articles.slug,
+        updatedAt: articles.updatedAt
+      }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).where(eq(articles.published, true)).orderBy(desc(articles.updatedAt));
+      const allCategories = await this.getCategories();
+      const baseUrl = process.env.FRONTEND_URL || "https://almstkshfblog.netlify.app";
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage -->
+  <url>
+    <loc>${baseUrl}</loc>
+    <lastmod>${(/* @__PURE__ */ new Date()).toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Blog main page -->
+  <url>
+    <loc>${baseUrl}/blog</loc>
+    <lastmod>${(/* @__PURE__ */ new Date()).toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Contact page -->
+  <url>
+    <loc>${baseUrl}/contact</loc>
+    <lastmod>${(/* @__PURE__ */ new Date()).toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+      for (const category of allCategories) {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/blog/category/${category.slug}</loc>
+    <lastmod>${category.createdAt?.toISOString() || (/* @__PURE__ */ new Date()).toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+      }
+      for (const article of publishedArticles) {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/blog/${article.slug}</loc>
+    <lastmod>${article.updatedAt?.toISOString() || (/* @__PURE__ */ new Date()).toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+      }
+      sitemap += `
+</urlset>`;
+      return sitemap;
+    } catch (error) {
+      console.error("Error generating sitemap:", error);
+      throw error;
+    }
+  }
+  async generateRSSFeed(lang) {
+    try {
+      const recentArticles = await db.select({
+        id: articles.id,
+        titleEn: articles.titleEn,
+        titleAr: articles.titleAr,
+        excerptEn: articles.excerptEn,
+        excerptAr: articles.excerptAr,
+        slug: articles.slug,
+        publishedAt: articles.publishedAt,
+        updatedAt: articles.updatedAt,
+        categoryNameEn: categories.nameEn,
+        categoryNameAr: categories.nameAr
+      }).from(articles).leftJoin(categories, eq(articles.categoryId, categories.id)).where(eq(articles.published, true)).orderBy(desc(articles.publishedAt)).limit(20);
+      const baseUrl = process.env.FRONTEND_URL || "https://almstkshfblog.netlify.app";
+      const isArabic = lang === "ar";
+      const blogTitle = isArabic ? "\u0645\u062F\u0648\u0646\u0629 \u0627\u0644\u0645\u0633\u062A\u0643\u0634\u0641" : "AlmstkshfBlog";
+      const blogDescription = isArabic ? "\u0645\u062F\u0648\u0646\u0629 \u062A\u0642\u0646\u064A\u0629 \u062A\u0647\u062A\u0645 \u0628\u0627\u0644\u062A\u0637\u0648\u064A\u0631 \u0648\u0627\u0644\u0628\u0631\u0645\u062C\u0629 \u0648\u0627\u0644\u062A\u0643\u0646\u0648\u0644\u0648\u062C\u064A\u0627" : "A technical blog focused on development, programming, and technology";
+      let rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${blogTitle}</title>
+    <link>${baseUrl}</link>
+    <description>${blogDescription}</description>
+    <language>${lang}</language>
+    <lastBuildDate>${(/* @__PURE__ */ new Date()).toUTCString()}</lastBuildDate>
+    <atom:link href="${baseUrl}/api/rss/${lang}" rel="self" type="application/rss+xml"/>`;
+      for (const article of recentArticles) {
+        const title = isArabic ? article.titleAr || article.titleEn : article.titleEn;
+        const excerpt = isArabic ? article.excerptAr || article.excerptEn : article.excerptEn;
+        const category = isArabic ? article.categoryNameAr || article.categoryNameEn : article.categoryNameEn;
+        rss += `
+    <item>
+      <title><![CDATA[${title}]]></title>
+      <link>${baseUrl}/blog/${article.slug}</link>
+      <description><![CDATA[${excerpt || ""}]]></description>
+      <category>${category || "General"}</category>
+      <guid isPermaLink="true">${baseUrl}/blog/${article.slug}</guid>
+      <pubDate>${article.publishedAt?.toUTCString() || article.updatedAt?.toUTCString() || (/* @__PURE__ */ new Date()).toUTCString()}</pubDate>
+    </item>`;
+      }
+      rss += `
+  </channel>
+</rss>`;
+      return rss;
+    } catch (error) {
+      console.error("Error generating RSS feed:", error);
+      throw error;
+    }
   }
 };
 var storage = new DatabaseStorage();
@@ -26112,7 +26282,7 @@ var ContentScheduler = class {
       published: true,
       featured: false,
       slug: this.generateSlug(post.title),
-      publishedAt: (/* @__PURE__ */ new Date()).toISOString()
+      publishedAt: /* @__PURE__ */ new Date()
     };
     await storage.createArticle(articleData);
   }
@@ -26218,6 +26388,39 @@ var AnalyticsTracker = class {
   trackBehavior(behavior) {
     this.behaviors.push(behavior);
     this.updateContentPerformance(behavior);
+  }
+  trackEvent(eventName, eventData) {
+    const behavior = {
+      sessionId: eventData.sessionId || "anonymous",
+      userId: eventData.userId,
+      articleId: eventData.articleId || 0,
+      action: this.mapEventToAction(eventName),
+      timestamp: /* @__PURE__ */ new Date(),
+      metadata: {
+        ...eventData,
+        referrer: eventData.referrer,
+        device: eventData.userAgent,
+        language: eventData.lang || eventData.language
+      }
+    };
+    this.trackBehavior(behavior);
+  }
+  mapEventToAction(eventName) {
+    switch (eventName) {
+      case "articles_viewed":
+      case "article_viewed":
+      case "category_viewed":
+        return "view";
+      case "search_performed":
+        return "search";
+      case "newsletter_subscription":
+      case "contact_form_submitted":
+      case "file_uploaded":
+      case "file_downloaded":
+        return "click";
+      default:
+        return "view";
+    }
   }
   updateContentPerformance(behavior) {
     const { articleId, action, metadata } = behavior;
@@ -26384,6 +26587,23 @@ var AnalyticsTracker = class {
       totalArticlesRead: userBehaviors.filter((b) => b.action === "view").length,
       engagementLevel: this.calculateUserEngagement(userBehaviors)
     };
+  }
+  async getAnalytics() {
+    const totalBehaviors = this.behaviors.length;
+    const uniqueSessions = new Set(this.behaviors.map((b) => b.sessionId)).size;
+    const totalPerformance = Array.from(this.performance.values());
+    const analytics = {
+      overview: {
+        totalEvents: totalBehaviors,
+        uniqueSessions,
+        totalArticles: totalPerformance.length,
+        avgEngagementScore: totalPerformance.reduce((sum, p) => sum + p.engagementScore, 0) / totalPerformance.length || 0
+      },
+      topPerformingContent: totalPerformance.sort((a, b) => b.engagementScore - a.engagementScore).slice(0, 10),
+      trendingContent: this.getTrendingContent(5),
+      recentActivity: this.behaviors.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 50)
+    };
+    return analytics;
   }
   calculateUserEngagement(behaviors) {
     const engagementActions = behaviors.filter(
@@ -27288,7 +27508,8 @@ var N8NAutomationService = class {
     try {
       await storage.createApiKey({
         serviceName: "n8n_webhook",
-        apiKey,
+        keyName: "webhook_key",
+        keyValue: apiKey,
         description: "N8N Automation Webhook",
         isActive: true
       });
@@ -27302,7 +27523,7 @@ var N8NAutomationService = class {
     }
     try {
       const storedKey = await storage.getApiKey("n8n_webhook");
-      if (storedKey && storedKey.apiKey === apiKey && storedKey.isActive) {
+      if (storedKey && storedKey.keyValue === apiKey && storedKey.isActive) {
         this.validApiKeys.add(apiKey);
         return true;
       }
@@ -27313,7 +27534,6 @@ var N8NAutomationService = class {
   }
   async createArticleFromWebhook(payload) {
     const slug = payload.slug || this.generateSlug(payload.titleEn || payload.titleAr || "");
-    const canonicalUrl = payload.canonicalUrl || `${process.env.SITE_URL || "https://almstkshf.com"}/en/blog/${slug}`;
     const articleData = {
       titleEn: payload.titleEn,
       titleAr: payload.titleAr || null,
@@ -27323,14 +27543,15 @@ var N8NAutomationService = class {
       excerptAr: payload.excerptAr || null,
       categoryId: payload.categoryId,
       authorName: payload.authorName,
+      authorImage: payload.authorImage || null,
       featuredImage: payload.featuredImage || null,
       published: payload.published || false,
       featured: payload.featured || false,
       slug,
-      metaTitle: payload.metaTitle || payload.titleEn,
-      metaDescription: payload.metaDescription || payload.excerptEn,
-      keywords: payload.keywords || null,
-      canonicalUrl
+      metaDescriptionEn: payload.metaDescriptionEn || payload.excerptEn || null,
+      metaDescriptionAr: payload.metaDescriptionAr || payload.excerptAr || null,
+      readingTime: payload.readingTime || null,
+      publishedAt: payload.published ? /* @__PURE__ */ new Date() : null
     };
     return await storage.createArticle(articleData);
   }
@@ -27344,14 +27565,17 @@ var N8NAutomationService = class {
     if (payload.excerptAr !== void 0) updateData.excerptAr = payload.excerptAr;
     if (payload.categoryId !== void 0) updateData.categoryId = payload.categoryId;
     if (payload.authorName !== void 0) updateData.authorName = payload.authorName;
+    if (payload.authorImage !== void 0) updateData.authorImage = payload.authorImage;
     if (payload.featuredImage !== void 0) updateData.featuredImage = payload.featuredImage;
-    if (payload.published !== void 0) updateData.published = payload.published;
+    if (payload.published !== void 0) {
+      updateData.published = payload.published;
+      updateData.publishedAt = payload.published ? /* @__PURE__ */ new Date() : null;
+    }
     if (payload.featured !== void 0) updateData.featured = payload.featured;
     if (payload.slug !== void 0) updateData.slug = payload.slug;
-    if (payload.metaTitle !== void 0) updateData.metaTitle = payload.metaTitle;
-    if (payload.metaDescription !== void 0) updateData.metaDescription = payload.metaDescription;
-    if (payload.keywords !== void 0) updateData.keywords = payload.keywords;
-    if (payload.canonicalUrl !== void 0) updateData.canonicalUrl = payload.canonicalUrl;
+    if (payload.metaDescriptionEn !== void 0) updateData.metaDescriptionEn = payload.metaDescriptionEn;
+    if (payload.metaDescriptionAr !== void 0) updateData.metaDescriptionAr = payload.metaDescriptionAr;
+    if (payload.readingTime !== void 0) updateData.readingTime = payload.readingTime;
     return await storage.updateArticle(articleId, updateData);
   }
   generateSlug(title) {
@@ -27530,12 +27754,24 @@ var import_multer = __toESM(require_multer(), 1);
 // server/auth.ts
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-var JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
-var JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
+var JWT_SECRET_ENV = process.env.JWT_SECRET;
+var JWT_REFRESH_SECRET_ENV = process.env.JWT_REFRESH_SECRET;
+if (!JWT_SECRET_ENV || !JWT_REFRESH_SECRET_ENV) {
+  throw new Error("JWT_SECRET and JWT_REFRESH_SECRET environment variables are required");
+}
+if (JWT_SECRET_ENV.length < 32 || JWT_REFRESH_SECRET_ENV.length < 32) {
+  throw new Error("JWT secrets must be at least 32 characters long");
+}
+var JWT_SECRET = JWT_SECRET_ENV;
+var JWT_REFRESH_SECRET = JWT_REFRESH_SECRET_ENV;
+var JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 var REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
-var ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-var ADMIN_EMAIL = process.env.ADMIN_EMAIL || "rased@almstkshf.com";
-var ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
+var ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+var ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+var ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+if (!ADMIN_USERNAME || !ADMIN_EMAIL || !ADMIN_PASSWORD_HASH) {
+  throw new Error("ADMIN_USERNAME, ADMIN_EMAIL, and ADMIN_PASSWORD_HASH environment variables are required");
+}
 async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
@@ -27543,33 +27779,42 @@ function generateTokens(user) {
   const accessTokenPayload = {
     userId: user.id,
     username: user.username,
+    email: user.email,
     role: user.role,
     type: "access"
   };
   const refreshTokenPayload = {
     userId: user.id,
     username: user.username,
+    email: user.email,
     role: user.role,
     type: "refresh"
   };
   const accessToken = jwt.sign(accessTokenPayload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     issuer: "almstkshf-blog",
-    audience: "almstkshf-admin"
+    audience: "almstkshf-admin",
+    algorithm: "HS256"
   });
-  const refreshToken = jwt.sign(refreshTokenPayload, JWT_SECRET, {
+  const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET, {
     expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     issuer: "almstkshf-blog",
-    audience: "almstkshf-admin"
+    audience: "almstkshf-admin",
+    algorithm: "HS256"
   });
   return { accessToken, refreshToken };
 }
-function verifyToken(token) {
+function verifyToken(token, tokenType = "access") {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
+    const secret = tokenType === "access" ? JWT_SECRET : JWT_REFRESH_SECRET;
+    const decoded = jwt.verify(token, secret, {
       issuer: "almstkshf-blog",
-      audience: "almstkshf-admin"
+      audience: "almstkshf-admin",
+      algorithms: ["HS256"]
     });
+    if (decoded.type !== tokenType) {
+      throw new Error(`Invalid token type. Expected ${tokenType}, got ${decoded.type}`);
+    }
     return decoded;
   } catch (error) {
     console.error("Token verification failed:", error);
@@ -27595,6 +27840,15 @@ async function authenticateAdmin(usernameOrEmail, password) {
 var authAttempts = /* @__PURE__ */ new Map();
 var MAX_AUTH_ATTEMPTS = 5;
 var AUTH_WINDOW = 15 * 60 * 1e3;
+var CLEANUP_INTERVAL = 60 * 60 * 1e3;
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempt] of authAttempts.entries()) {
+    if (now - attempt.lastAttempt > AUTH_WINDOW) {
+      authAttempts.delete(ip);
+    }
+  }
+}, CLEANUP_INTERVAL);
 function authRateLimit(req, res, next) {
   const clientIP = req.ip || req.connection.remoteAddress || "unknown";
   const now = Date.now();
@@ -27762,7 +28016,13 @@ async function registerServerlessRoutes(app2) {
       const category = req.query.category;
       const featured = req.query.featured === "true";
       const lang = req.query.lang || "en";
-      const articles2 = await storage.getArticles({ page, limit, category, featured, lang });
+      const articles2 = await storage.getArticles({
+        categoryId: category ? parseInt(category) : void 0,
+        featured,
+        limit,
+        offset: (page - 1) * limit,
+        language: lang
+      });
       analyticsTracker.trackEvent("articles_viewed", {
         page,
         limit,
@@ -27782,7 +28042,7 @@ async function registerServerlessRoutes(app2) {
     try {
       const { slug } = req.params;
       const lang = req.query.lang || "en";
-      const article = await storage.getArticleBySlug(slug, lang);
+      const article = await storage.getArticleBySlug(slug);
       if (!article) {
         return res.status(404).json({ error: "Article not found" });
       }
@@ -27801,11 +28061,31 @@ async function registerServerlessRoutes(app2) {
   app2.get("/api/categories", async (req, res) => {
     try {
       const lang = req.query.lang || "en";
-      const categories2 = await storage.getCategories(lang);
+      const categories2 = await storage.getCategories();
       res.json(categories2);
     } catch (error) {
       console.error("Error fetching categories:", error);
       res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+  app2.get("/api/categories/:slug", async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const lang = req.query.lang || "en";
+      const category = await storage.getCategoryBySlug(slug);
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+      analyticsTracker.trackEvent("category_viewed", {
+        slug,
+        lang,
+        userAgent: req.headers["user-agent"],
+        ip: req.ip
+      });
+      res.json(category);
+    } catch (error) {
+      console.error("Error fetching category:", error);
+      res.status(500).json({ error: "Failed to fetch category" });
     }
   });
   app2.get("/api/search", async (req, res) => {
@@ -27817,17 +28097,27 @@ async function registerServerlessRoutes(app2) {
       if (!query) {
         return res.status(400).json({ error: "Search query is required" });
       }
-      const results = await storage.searchArticles(query, { page, limit, lang });
+      const allResults = await storage.searchArticles(query, lang);
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedResults = allResults.slice(startIndex, endIndex);
+      const response = {
+        articles: paginatedResults,
+        total: allResults.length,
+        page,
+        limit,
+        totalPages: Math.ceil(allResults.length / limit)
+      };
       analyticsTracker.trackEvent("search_performed", {
         query,
         lang,
         page,
         limit,
-        resultsCount: results.articles.length,
+        resultsCount: allResults.length,
         userAgent: req.headers["user-agent"],
         ip: req.ip
       });
-      res.json(results);
+      res.json(response);
     } catch (error) {
       console.error("Error performing search:", error);
       res.status(500).json({ error: "Search failed" });
@@ -27838,13 +28128,13 @@ async function registerServerlessRoutes(app2) {
       const validatedData = insertNewsletterSubscriberSchema.parse(req.body);
       const subscriber = await storage.subscribeToNewsletter(validatedData);
       try {
-        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.preferredLanguage);
+        await emailAutomation.sendWelcomeEmail(validatedData.email, validatedData.language || "en");
       } catch (emailError) {
         console.error("Failed to send welcome email:", emailError);
       }
       analyticsTracker.trackEvent("newsletter_subscription", {
         email: validatedData.email,
-        language: validatedData.preferredLanguage,
+        language: validatedData.language,
         userAgent: req.headers["user-agent"],
         ip: req.ip
       });
@@ -27862,14 +28152,18 @@ async function registerServerlessRoutes(app2) {
       const validatedData = insertContactSubmissionSchema.parse(req.body);
       const submission = await storage.submitContactForm(validatedData);
       try {
-        await emailService.sendContactNotification(validatedData);
+        await emailService.sendContactFormEmail({
+          ...validatedData,
+          company: validatedData.company || void 0,
+          language: validatedData.language || "en"
+        });
       } catch (emailError) {
         console.error("Failed to send contact notification:", emailError);
       }
       analyticsTracker.trackEvent("contact_form_submitted", {
         name: validatedData.name,
         email: validatedData.email,
-        subject: validatedData.subject,
+        type: validatedData.type,
         userAgent: req.headers["user-agent"],
         ip: req.ip
       });

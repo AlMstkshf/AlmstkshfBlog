@@ -92,6 +92,10 @@ export interface IStorage {
   updateDownload(id: number, download: Partial<InsertDownload>): Promise<Download>;
   deleteDownload(id: number): Promise<void>;
   incrementDownloadCount(id: number): Promise<void>;
+
+  // SEO operations
+  generateSitemap(): Promise<string>;
+  generateRSSFeed(lang: string): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -850,6 +854,149 @@ export class DatabaseStorage implements IStorage {
       .update(downloads)
       .set({ downloadCount: sql`${downloads.downloadCount} + 1` })
       .where(eq(downloads.id, id));
+  }
+
+  // SEO operations
+  async generateSitemap(): Promise<string> {
+    try {
+      // Get all published articles with categories
+      const publishedArticles = await db
+        .select({
+          slug: articles.slug,
+          updatedAt: articles.updatedAt,
+        })
+        .from(articles)
+        .leftJoin(categories, eq(articles.categoryId, categories.id))
+        .where(eq(articles.published, true))
+        .orderBy(desc(articles.updatedAt));
+
+      // Get all categories
+      const allCategories = await this.getCategories();
+
+      const baseUrl = process.env.FRONTEND_URL || 'https://almstkshfblog.netlify.app';
+      
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage -->
+  <url>
+    <loc>${baseUrl}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Blog main page -->
+  <url>
+    <loc>${baseUrl}/blog</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Contact page -->
+  <url>
+    <loc>${baseUrl}/contact</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+
+      // Add category pages
+      for (const category of allCategories) {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/blog/category/${category.slug}</loc>
+    <lastmod>${category.createdAt?.toISOString() || new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+      }
+
+      // Add article pages
+      for (const article of publishedArticles) {
+        sitemap += `
+  <url>
+    <loc>${baseUrl}/blog/${article.slug}</loc>
+    <lastmod>${article.updatedAt?.toISOString() || new Date().toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+      }
+
+      sitemap += `
+</urlset>`;
+
+      return sitemap;
+    } catch (error) {
+      console.error('Error generating sitemap:', error);
+      throw error;
+    }
+  }
+
+  async generateRSSFeed(lang: string): Promise<string> {
+    try {
+      // Get recent published articles for the specified language
+      const recentArticles = await db
+        .select({
+          id: articles.id,
+          titleEn: articles.titleEn,
+          titleAr: articles.titleAr,
+          excerptEn: articles.excerptEn,
+          excerptAr: articles.excerptAr,
+          slug: articles.slug,
+          publishedAt: articles.publishedAt,
+          updatedAt: articles.updatedAt,
+          categoryNameEn: categories.nameEn,
+          categoryNameAr: categories.nameAr,
+        })
+        .from(articles)
+        .leftJoin(categories, eq(articles.categoryId, categories.id))
+        .where(eq(articles.published, true))
+        .orderBy(desc(articles.publishedAt))
+        .limit(20);
+
+      const baseUrl = process.env.FRONTEND_URL || 'https://almstkshfblog.netlify.app';
+      const isArabic = lang === 'ar';
+      const blogTitle = isArabic ? 'مدونة المستكشف' : 'AlmstkshfBlog';
+      const blogDescription = isArabic 
+        ? 'مدونة تقنية تهتم بالتطوير والبرمجة والتكنولوجيا'
+        : 'A technical blog focused on development, programming, and technology';
+
+      let rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${blogTitle}</title>
+    <link>${baseUrl}</link>
+    <description>${blogDescription}</description>
+    <language>${lang}</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <atom:link href="${baseUrl}/api/rss/${lang}" rel="self" type="application/rss+xml"/>`;
+
+      for (const article of recentArticles) {
+        const title = isArabic ? (article.titleAr || article.titleEn) : article.titleEn;
+        const excerpt = isArabic ? (article.excerptAr || article.excerptEn) : article.excerptEn;
+        const category = isArabic ? (article.categoryNameAr || article.categoryNameEn) : article.categoryNameEn;
+        
+        rss += `
+    <item>
+      <title><![CDATA[${title}]]></title>
+      <link>${baseUrl}/blog/${article.slug}</link>
+      <description><![CDATA[${excerpt || ''}]]></description>
+      <category>${category || 'General'}</category>
+      <guid isPermaLink="true">${baseUrl}/blog/${article.slug}</guid>
+      <pubDate>${article.publishedAt?.toUTCString() || article.updatedAt?.toUTCString() || new Date().toUTCString()}</pubDate>
+    </item>`;
+      }
+
+      rss += `
+  </channel>
+</rss>`;
+
+      return rss;
+    } catch (error) {
+      console.error('Error generating RSS feed:', error);
+      throw error;
+    }
   }
 }
 

@@ -41,6 +41,7 @@ export interface AuthUser {
 export interface JWTPayload {
   userId: string;
   username: string;
+  email: string;
   role: 'admin';
   type: 'access' | 'refresh';
 }
@@ -61,6 +62,7 @@ export function generateTokens(user: AuthUser): { accessToken: string; refreshTo
   const accessTokenPayload: JWTPayload = {
     userId: user.id,
     username: user.username,
+    email: user.email,
     role: user.role,
     type: 'access'
   };
@@ -68,6 +70,7 @@ export function generateTokens(user: AuthUser): { accessToken: string; refreshTo
   const refreshTokenPayload: JWTPayload = {
     userId: user.id,
     username: user.username,
+    email: user.email,
     role: user.role,
     type: 'refresh'
   };
