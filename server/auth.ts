@@ -136,11 +136,22 @@ export async function authenticateAdmin(usernameOrEmail: string, password: strin
   };
 }
 
-// Authentication middleware
+// Authentication middleware - supports both Bearer tokens and HTTP-only cookies
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+  let token: string | null = null;
   
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // Try to get token from Authorization header first (for API calls)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  }
+  
+  // If no Bearer token, try to get from HTTP-only cookie (for web app)
+  if (!token && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  }
+  
+  if (!token) {
     return res.status(401).json({ 
       success: false, 
       message: 'Access token required',
@@ -148,7 +159,6 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     });
   }
 
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   const payload = verifyToken(token);
 
   if (!payload || payload.type !== 'access') {

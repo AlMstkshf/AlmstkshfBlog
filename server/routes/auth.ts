@@ -46,12 +46,25 @@ export function createAuthRoutes() {
       const tokens = generateTokens(user);
       recordAuthAttempt(clientIP, true);
 
-      // Set secure HTTP-only cookie for refresh token
+      // Set secure HTTP-only cookies for both access and refresh tokens
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      // Access token cookie (shorter expiry)
+      res.cookie('accessToken', tokens.accessToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 15 * 60 * 1000, // 15 minutes
+        path: '/'
+      });
+      
+      // Refresh token cookie (longer expiry)
       res.cookie('refreshToken', tokens.refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/'
       });
 
       successResponse(res, {
@@ -61,8 +74,9 @@ export function createAuthRoutes() {
           email: user.email,
           role: user.role
         },
+        // Still provide access token for API clients that need it
         accessToken: tokens.accessToken,
-        expiresIn: '24h'
+        expiresIn: '15m'
       }, "Login successful");
       
     } catch (error) {
@@ -94,24 +108,44 @@ export function createAuthRoutes() {
     };
 
     const tokens = generateTokens(user);
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Update refresh token cookie
+    // Update both access and refresh token cookies
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/'
+    });
+    
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
     });
 
     successResponse(res, {
       accessToken: tokens.accessToken,
-      expiresIn: '24h'
+      expiresIn: '15m'
     }, "Token refreshed");
   }));
 
   // Logout endpoint
   router.post("/logout", asyncHandler(async (req: Request, res: Response) => {
-    res.clearCookie('refreshToken');
+    // Clear both access and refresh token cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' as const : 'lax' as const,
+      path: '/'
+    };
+    
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
+    
     successResponse(res, null, "Logged out successfully");
   }));
 
