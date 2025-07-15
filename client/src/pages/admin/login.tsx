@@ -106,11 +106,14 @@ export default function AdminLogin() {
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast({
-        title: "Connection Error",
-        description: "Failed to connect to server. Please try again.",
-        variant: "destructive",
-      });
+      // Small delay to ensure any previous toasts are dismissed
+      setTimeout(() => {
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to server. Please try again.",
+          variant: "destructive",
+        });
+      }, 100);
     } finally {
       setIsLoading(false);
     }
